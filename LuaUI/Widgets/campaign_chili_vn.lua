@@ -30,6 +30,7 @@ local Label
 local TextBox
 local screen0
 
+-- Chili elements
 local mainWindow
 local textPanel
 local textbox, nameLabel
@@ -45,24 +46,31 @@ local MENU_BUTTON_WIDTH = 64
 local MENU_BUTTON_HEIGHT_LARGE = 36
 local MENU_BUTTON_WIDTH_LARGE = 72
 
+local waitTime = nil -- tick down in Update()
+local waitAction  -- will we actually care what this is?
 
+-- {[1]} = {target = target, type = type, startX = x, startY = y, endX = x, endY = y, startColor = color, endColor = color, time = time, timeElapsed = time ...}}
+-- every Update(dt), increment time by dt and move stuff accordingly
+-- elements are removed from table once timeElapsed >= time
+local animations = {} 
 
 local defs = {
-  storyInfo = {},
+  storyInfo = {}, -- entire contents of story_info.lua
   storyDir = "",
-  scripts = {},
-  characters = {},
-  images = {}
+  scripts = {}, -- {[scriptName] = {list of actions}}
+  characters = {},  -- {[charactername] = {data}}
+  images = {} -- {[image name] = {data}}
 }
 
 local data = {
   storyID = "",
-  images = {},
+  images = {},  -- {[id] = Chili.Image}
   subscreens = {},
   vars = {},
-  textLog = {},
-  backgroundFile = "",
-  currentMusic = {},
+  textLog = {}, -- {[1] = <AddText args table>, [2] = ...}
+  backgroundFile = "",  -- path as specified in script (before prepending dir)
+  currentText = "", -- the full line (textbox will not contain the full line until text writing has reached the end)
+  currentMusic = {},  -- PlayMusic arg
 
   currentScript = "",
 
@@ -283,8 +291,11 @@ scriptFunctions = {
     data.currentMusic = nil
   end,
   
-  Wait = function()
-    
+  Wait = function(args)
+    local time = (type(args) == 'number' and args) or (type(args) == 'table' and args.time)
+    if time then
+      waitTime = time
+    end
   end,
 }
 
@@ -567,6 +578,19 @@ end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
+function widget:Update(dt)
+  if (waitTime) then
+    waitTime = waitTime - dt
+    if waitTime <= 0 then
+      waitTime = nil
+      AdvanceScript()
+    end
+  end
+  for k,v in pairs(animations) do
+     -- advance each animation 
+  end
+end
+
 function widget:Initialize()
   -- chili stuff here
   if not (WG.Chili) then
@@ -651,8 +675,8 @@ function widget:Initialize()
   menuStack = StackPanel:New{
     parent = mainWindow,
     orientation = 'vertical',
-    autosize = true,
-    resizeItems = false,
+    autosize = false,
+    resizeItems = true,
     centerItems = false,
     y = MENU_BUTTON_HEIGHT_LARGE + 24 + 8,
     right = 4,

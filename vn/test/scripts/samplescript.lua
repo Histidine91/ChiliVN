@@ -3,7 +3,7 @@ local scripts = {
 		{"AddBackground", {image = "bg/rainbowbridge.jpg"}},
 		{"AddText", {speaker = "narrator", textID = "intro1", text = "It was a dark and stormy night... well, not really..."}},
 		{"PlaySound", {file = "../../sounds/explosion/ex_ultra8.wav"}},
-		{"Wait"},
+		{"Wait", 3},
 		{"JumpScript", "intro2"}
 	},
 	intro2 = {
@@ -15,7 +15,7 @@ local scripts = {
 		{"AddText", {speaker = "eileen", textID = "intro2", text = "Wait a minute... this isn't Ren'Py..."}},
 		{"AddText", {speaker = "eileen", textID = "intro2", text = " *sigh*", append = true}},
 		{"RemoveImage", {id = "eileen"}},
-		{"StopMusic"},
+		--{"StopMusic"},
 		{"Wait"},
 		{"ClearText"},
 		{"AddText", {speaker = "narrator", textID = "intro1", text = "T-T-That's all, folks!"}},
