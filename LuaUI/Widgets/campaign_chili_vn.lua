@@ -305,6 +305,8 @@ scriptFunctions = {
   end,
   
   PlayMusic = function(args)
+    if not args.track then return end
+    
     local track = GetFilePath(args.track)
     local intro = args.intro and GetFilePath(args.intro) or track
     if args.loop and WG.Music and WG.Music.StartLoopingTrack then
@@ -581,6 +583,7 @@ local function LoadGame(filename)
     lastText = Spring.Utilities.CopyTable(lastText, true)
     lastText.noLog = true
     lastText.append = false
+    lastText.instant = true
     scriptFunctions.AddText(lastText)
   end
   
