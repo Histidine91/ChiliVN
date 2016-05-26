@@ -694,18 +694,8 @@ function widget:Initialize()
     height = "20%",
     x = 0,
     bottom = 0,
-    OnClick = {function(self, x, y, mouse)
-        if mouse == 1 then
-          AdvanceScript()
-        elseif mouse == 3 then
-          CreateLogPanel()
-        end
-      end
-    },
-    OnMouseDown = {function(self) return true end},
-    
   }
-  function textPanel:HitTest() return self end
+  --function textPanel:HitTest() return self end
   
   nameLabel = TextBox:New{
     parent = textPanel,
@@ -742,6 +732,15 @@ function widget:Initialize()
     y = 16,
     width = "100%",
     height = "100%",
+        OnClick = {function(self, x, y, mouse)
+        if mouse == 1 then
+          AdvanceScript()
+        elseif mouse == 3 then
+          CreateLogPanel()
+        end
+      end
+    },
+    OnMouseDown = {function(self) return true end},
   }
   
   LoadTestStory()
