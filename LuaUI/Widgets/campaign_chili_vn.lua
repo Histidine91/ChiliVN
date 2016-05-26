@@ -45,6 +45,7 @@ local MENU_BUTTON_HEIGHT = 32
 local MENU_BUTTON_WIDTH = 64
 local MENU_BUTTON_HEIGHT_LARGE = 36
 local MENU_BUTTON_WIDTH_LARGE = 72
+local DEFAULT_FONT_SIZE = 16
 local TEXT_INTERVAL = 0.05
 
 options_path = 'Settings/HUD Panels/Visual Novel'
@@ -224,6 +225,13 @@ scriptFunctions = {
       args.text = textbox.text .. args.text
     end
     data.currentText = args.text
+    
+    args.size = args.size or DEFAULT_FONT_SIZE
+    if args.size ~= textbox.font.size then
+      textbox.font.size = args.size
+      --textBox:Invalidate()
+    end
+    
     if args.instant or options.textspeed.value <= 0 then
       textbox:SetText(args.text)
     elseif (not args.append) then
@@ -800,7 +808,7 @@ function widget:Initialize()
     height = "75%",
     padding = {5, 5, 5, 5},
     font    = {
-      size = 16;
+      size = DEFAULT_FONT_SIZE;
       shadow = true;
     },
     
