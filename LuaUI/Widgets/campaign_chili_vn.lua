@@ -45,6 +45,20 @@ local MENU_BUTTON_HEIGHT = 32
 local MENU_BUTTON_WIDTH = 64
 local MENU_BUTTON_HEIGHT_LARGE = 36
 local MENU_BUTTON_WIDTH_LARGE = 72
+local TEXT_INTERVAL = 0.05
+
+options_path = 'Settings/HUD Panels/Visual Novel'
+options = {
+  textspeed = {
+		name = "Text Speed",
+		type = 'number',
+		min = 0, 
+		max = 100, 
+		step = 5,
+		value = 30,
+		desc = 'Characters/second (0 = instant)',
+	},
+}
 
 local waitTime = nil -- tick down in Update()
 local waitAction  -- will we actually care what this is?
@@ -129,8 +143,28 @@ local function StartScript(scriptName)
   PlayScriptLine(1)
 end
 
+local function AdvanceText(time, toEnd)
+  local wantedLength = string.len(data.currentText or "")
+  local currLength = string.len(textbox.text or "")
+  if currLength < wantedLength then
+    if (toEnd) then
+      textbox:SetText(data.currentText)
+    else
+      local charactersToAdd = math.floor(time * options.textspeed.value + 0.5)
+      local newLength = currLength + charactersToAdd
+      if newLength > wantedLength then newLength = wantedLength end
+      local newText = string.sub(data.currentText, 1, newLength)
+      textbox:SetText(newText)
+    end
+  elseif toEnd then
+    AdvanceScript()
+  end
+end
+
 AdvanceScript = function()
   --Spring.Echo("Advancing script")
+  --AdvanceText(0, true)
+  waitTime = nil
   data.currentLine = data.currentLine + 1
   PlayScriptLine(data.currentLine)
 end
@@ -185,10 +219,17 @@ scriptFunctions = {
   end,
   
   AddText = function(args)
+    -- TODO get i18n string
     if (args.append) then
       args.text = textbox.text .. args.text
     end
-    textbox:SetText(args.text)	-- TODO get i18n string
+    data.currentText = args.text
+    if args.instant or options.textspeed.value <= 0 then
+      textbox:SetText(args.text)
+    elseif (not args.append) then
+      textbox:SetText("")
+    end
+    
     if (args.speaker) then
       local speaker = defs.characters[args.speaker]
       local color = speaker.color
@@ -216,6 +257,7 @@ scriptFunctions = {
     nameLabel:SetText("")
     nameLabel:Invalidate()
     textbox:SetText("")
+    data.currentText = ""
   end,
   
   Exit = function()
@@ -602,6 +644,8 @@ end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
+local textTime = 0
+
 function widget:Update(dt)
   if (waitTime) then
     waitTime = waitTime - dt
@@ -612,6 +656,11 @@ function widget:Update(dt)
   end
   for k,v in pairs(animations) do
      -- advance each animation 
+  end
+  textTime = textTime + dt
+  if textTime > TEXT_INTERVAL then
+    AdvanceText(textTime, false)
+    textTime = 0
   end
 end
 
@@ -687,6 +736,14 @@ function widget:Initialize()
     OnClick = {function() CreateLogPanel() end}
   }
   
+  buttonOptions = Button:New{
+    name = "vn_buttonOptions",
+    caption = "OPT",
+    width = MENU_BUTTON_WIDTH,
+    height = MENU_BUTTON_HEIGHT,
+    OnClick = {function() WG.crude.OpenPath(options_path); WG.crude.ShowMenu(); end}
+  }
+  
   buttonQuit = Button:New{
     name = "vn_buttonQuit",
     caption = "QUIT",
@@ -695,7 +752,7 @@ function widget:Initialize()
     OnClick = {function() widgetHandler:RemoveWidget() end}
   }
   
-  local menuChildren = {buttonSave, buttonLoad, buttonLog, buttonQuit}
+  local menuChildren = {buttonSave, buttonLoad, buttonLog, buttonOptions, buttonQuit}
   menuStack = StackPanel:New{
     parent = mainWindow,
     orientation = 'vertical',
@@ -735,7 +792,7 @@ function widget:Initialize()
   textbox = TextBox:New{
     parent = textPanel,
     name = "vn_textbox",
-    text    = "Hello world!",
+    text    = "",
     align   = "left",
     x = "5%",
     bottom = 0,
@@ -759,7 +816,7 @@ function widget:Initialize()
         OnClick = {function(self, x, y, mouse)
         if mouse == 1 then
           if not uiHidden then
-            AdvanceScript()
+            AdvanceText(0, true)
           else
             ToggleUI()
           end
