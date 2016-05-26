@@ -222,7 +222,7 @@ scriptFunctions = {
   AddText = function(args)
     -- TODO get i18n string
     if (args.append) then
-      args.text = textbox.text .. args.text
+      args.text = data.currentText .. args.text
     end
     data.currentText = args.text
     
@@ -468,7 +468,7 @@ local function CreateLogPanel()
     if (not entry) then
       break
     end
-    local speaker = defs.characters[entry.speaker]
+    local speaker = entry.speaker and defs.characters[entry.speaker]
     local color = speaker and speaker.color or nil
       
     logScroll:AddChild(Panel:New {
@@ -486,7 +486,7 @@ local function CreateLogPanel()
           font    = {
             size = 16;
             shadow = true;
-            color = speaker.color
+            color = speaker and speaker.color
           },
         },
         TextBox:New {
@@ -670,7 +670,11 @@ function widget:Update(dt)
   end
   textTime = textTime + dt
   if textTime > TEXT_INTERVAL then
-    AdvanceText(textTime, false)
+    if Spring.GetPressedKeys()[306] then  -- ctrl
+      AdvanceScript()
+    else
+      AdvanceText(textTime, false)
+    end
     textTime = 0
   end
 end
