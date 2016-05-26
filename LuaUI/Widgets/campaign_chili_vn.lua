@@ -80,6 +80,7 @@ local data = {
 local scriptFunctions = {}
 
 local menuVisible = false
+local uiHidden = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 local function CountElements(tbl)
@@ -310,10 +311,33 @@ local function ToggleMenu()
   menuVisible = not menuVisible
 end
 
-local function ResetMainLayers()
-  textPanel:SetLayer(1)
-  menuButton:SetLayer(2)
-  menuStack:SetLayer(3)
+local function ResetMainLayers(force)
+  --[[
+  if force or (not uiHidden) then
+    textPanel:SetLayer(1)
+    menuButton:SetLayer(2)
+    menuStack:SetLayer(3)
+  end
+  ]]--
+  background:SetLayer(99)
+end
+
+local function ToggleUI()
+  if uiHidden then
+    mainWindow:AddChild(textPanel)
+    mainWindow:AddChild(menuButton)
+    if menuVisible then
+      mainWindow:AddChild(menuStack)
+    end
+    ResetMainLayers(true)
+  else
+    mainWindow:RemoveChild(textPanel)
+    mainWindow:RemoveChild(menuButton)
+    if menuVisible then
+      mainWindow:RemoveChild(menuStack)
+    end
+  end
+  uiHidden = not uiHidden
 end
 
 local function RemoveLogPanel()
@@ -734,9 +758,13 @@ function widget:Initialize()
     height = "100%",
         OnClick = {function(self, x, y, mouse)
         if mouse == 1 then
-          AdvanceScript()
+          if not uiHidden then
+            AdvanceScript()
+          else
+            ToggleUI()
+          end
         elseif mouse == 3 then
-          CreateLogPanel()
+          ToggleUI()
         end
       end
     },
