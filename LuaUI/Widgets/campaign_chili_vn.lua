@@ -282,6 +282,7 @@ local function AddAnimation(args, image)
 end
 
 local function SetPortrait(image)
+  if not portrait then return end
   image = image and GetFilePath(image) or BLANK_IMAGE_PATH
   portrait.file = image
   portrait:Invalidate()
