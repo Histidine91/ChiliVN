@@ -34,6 +34,7 @@ local screen0
 local mainWindow
 local textPanel
 local textbox, nameLabel
+local portraitPanel, portrait
 local background
 local menuButton, menuStack
 local buttonSave, buttonLoad, buttonLog, buttonQuit
@@ -86,6 +87,7 @@ local data = {
   vars = {},
   textLog = {}, -- {[1] = <AddText args table>, [2] = ...}
   backgroundFile = "",  -- path as specified in script (before prepending dir)
+  portraitFile = "",  -- ditto
   currentText = "", -- the full line (textbox will not contain the full line until text writing has reached the end)
   currentMusic = {},  -- PlayMusic arg
 
@@ -111,6 +113,10 @@ end
 
 -- hax for parent directory syntax
 local function GetFilePath(givenPath)
+  if givenPath == nil then
+    return ""
+  end
+  
   if string.find(givenPath, "../../", 1, true) == 1 then
     return string.sub(givenPath, 7)
   elseif string.find(givenPath, "../", 1, true) == 1 then
@@ -275,6 +281,12 @@ local function AddAnimation(args, image)
   animations[#animations + 1] = Spring.Utilities.CopyTable(anim, true)
 end
 
+local function SetPortrait(image)
+  image = image and GetFilePath(image) or BLANK_IMAGE_PATH
+  portrait.file = image
+  portrait:Invalidate()
+end
+
 scriptFunctions = {
   AddBackground = function(args)
     background.file = GetFilePath(args.image)
@@ -354,9 +366,15 @@ scriptFunctions = {
       --nameLabel:SetCaption(string.char(color[4], color[1], color[2], color[3]).. speaker.name.."\008")
       nameLabel.font.color = color
       nameLabel:SetText(speaker.name)
+      if args.setPortrait ~= false then
+        SetPortrait(speaker.portrait)
+      end
     else
       --nameLabel:SetCaption("")
       nameLabel:SetText("")
+      if args.setPortrait ~= false then
+        SetPortrait(nil)
+      end
     end
     nameLabel:Invalidate()
     if not args.noLog then
@@ -376,6 +394,7 @@ scriptFunctions = {
     nameLabel:Invalidate()
     textbox:SetText("")
     data.currentText = ""
+    SetPortrait(nil)
   end,
   
   Exit = function()
@@ -447,6 +466,11 @@ scriptFunctions = {
     end
     image:Dispose()
     data.images[args.id] = nil
+  end,
+  
+  SetPortrait = function(args)
+    local file = (type(args) == 'string' and args) or (type(args) == 'table' and args.file)
+    SetPortrait(file)
   end,
   
   StopMusic = function(args)
@@ -917,17 +941,35 @@ function widget:Initialize()
     parent = mainWindow,
     name = "vn_textPanel",
     width = "100%",
-    height = "20%",
+    height = TEXT_PANEL_HEIGHT,
     x = 0,
     bottom = 0,
   }
   --function textPanel:HitTest() return self end
   
+  if USE_PORTRAIT then
+    portraitPanel = Panel:New {
+      parent = textPanel,
+      name = "vn_portraitPanel",
+      width = PORTRAIT_WIDTH + 6,
+      height = PORTRAIT_HEIGHT + 6,
+      x = 0,
+      padding = {3, 3, 3, 3},
+      y = 4,
+    }
+    portrait = Image:New{
+      parent = portraitPanel,
+      name = "vn_portrait",
+      width = "100%",
+      height = "100%"
+    }
+  end
+  
   nameLabel = TextBox:New{
     parent = textPanel,
     name = "vn_nameLabel",
-    text = "Speaker",
-    x = 8,
+    text = "",
+    x = (USE_PORTRAIT and PORTRAIT_WIDTH + 8 or 0) + 8,
     y = 4,
     font = {
       size = 24;
@@ -939,9 +981,9 @@ function widget:Initialize()
     name = "vn_textbox",
     text    = "",
     align   = "left",
-    x = "5%",
+    x = (USE_PORTRAIT and PORTRAIT_WIDTH + 16 or 52),
     bottom = 0,
-    width = "95%",
+    right = "5%",
     height = "75%",
     padding = {5, 5, 5, 5},
     font    = {

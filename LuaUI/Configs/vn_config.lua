@@ -4,7 +4,12 @@ MENU_BUTTON_WIDTH = 64
 MENU_BUTTON_HEIGHT_LARGE = 36
 MENU_BUTTON_WIDTH_LARGE = 72
 DEFAULT_FONT_SIZE = 16
+TEXT_PANEL_HEIGHT = 148
 TEXT_INTERVAL = 0.05
+USE_PORTRAIT = true
+PORTRAIT_WIDTH = 96
+PORTRAIT_HEIGHT = 128
+BLANK_IMAGE_PATH = "LuaRules/Images/IconGenBkgs/bg_blank.png"
 
 local config = {
 	VN_DIR = "vn/",
@@ -16,6 +21,7 @@ local autoAdvanceActions = {
 	"AddImage",
 	"ModifyImage",
 	"RemoveImage",
+	"SetPortrait",
 	"ClearText",
 	"PlaySound",
 	"PlayMusic",
