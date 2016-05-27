@@ -192,6 +192,36 @@ local function AdvanceText(time, toEnd)
   end
 end
 
+local function ShakeImage(anim, proportion)
+  local target = anim.image and data.images[anim.image] or background
+  anim.baseX = anim.baseX or target.x
+  anim.baseY = anim.baseY or target.y
+  anim.offsetX = anim.offsetX or (math.random() > 0.5 and 1 or -1)
+  anim.offsetY = anim.offsetY or (math.random() > 0.5 and 1 or -1)
+  
+  if (proportion == 1) then	-- animation end, reset to normal
+    target.x = anim.baseX
+    target.y = anim.baseY
+    target:Invalidate()
+    return
+  end
+  proportion = 0.2 + proportion * 0.8
+  
+  local strengthX = anim.strengthX or 32
+  local strengthY = anim.strengthY or 24
+  
+  -- invert direction each frame
+  local newOffsetX = math.random(1, strengthX) * ((anim.offsetX > 1) and -1 or 1)
+  local newOffsetY = math.random(1, strengthY) * ((anim.offsetY > 1) and -1 or 1)
+  newOffsetX = math.floor(newOffsetX * (1 - proportion) + 0.5)
+  newOffsetY = math.floor(newOffsetY * (1 - proportion) + 0.5)
+  anim.offsetX = newOffsetX
+  anim.offsetY = newOffsetY
+  target.x = anim.baseX + newOffsetX
+  target.y = anim.baseY + newOffsetY
+  target:Invalidate()
+end
+
 -- Advance animations a frame
 local function AdvanceAnimations(dt)
   local toRemove = {}
@@ -209,6 +239,8 @@ local function AdvanceAnimations(dt)
     local proportion = anim.timeElapsed/anim.time
     if (proportion <= 0) then
       proportion = 0  -- animation at zero point, do nothing for now
+    elseif (anim.type == "shake") then
+      ShakeImage(anim, proportion)
     else
       anim.startX = anim.startX or target.x
       anim.startY = anim.startY or target.y
@@ -472,6 +504,11 @@ scriptFunctions = {
   SetPortrait = function(args)
     local file = (type(args) == 'string' and args) or (type(args) == 'table' and args.file)
     SetPortrait(file)
+  end,
+  
+  ShakeScreen = function(args)
+    args.type = "shake"
+    AddAnimation({animation = args}, background)
   end,
   
   StopMusic = function(args)
