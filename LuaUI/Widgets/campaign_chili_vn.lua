@@ -50,15 +50,24 @@ local TEXT_INTERVAL = 0.05
 
 options_path = 'Settings/HUD Panels/Visual Novel'
 options = {
-  textspeed = {
-		name = "Text Speed",
-		type = 'number',
-		min = 0, 
-		max = 100, 
-		step = 5,
-		value = 30,
-		desc = 'Characters/second (0 = instant)',
-	},
+  textSpeed = {
+    name = "Text Speed",
+    type = 'number',
+    min = 0, 
+    max = 100, 
+    step = 5,
+    value = 30,
+    desc = 'Characters/second (0 = instant)',
+  },
+  waitTime = {
+    name = "Wait time",
+    type = 'number',
+    min = 0, 
+    max = 4, 
+    step = 0.5,
+    value = 1.5,
+    desc = 'Wait time at end of each script line before auto-advance',
+  },
 }
 
 local waitTime = nil -- tick down in Update()
@@ -96,6 +105,7 @@ local scriptFunctions = {}
 
 local menuVisible = false
 local uiHidden = false
+local autoAdvance = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 local function CountElements(tbl)
@@ -123,16 +133,21 @@ function AdvanceScript() end  -- redefined in a bit
 local function PlayScriptLine(line)
   local item = defs.scripts[data.currentScript][line]
   if item then
+    local action = item[1]
     local args = item[2]
     if (type(args) == 'table') then
       args = Spring.Utilities.CopyTable(item[2], true)
     elseif args == nil then
       args = {}
     end
-    scriptFunctions[item[1]](args)
-    if config.autoAdvanceActions[item[1]] and (type(args) == 'table' and (not args.pause)) then
+    scriptFunctions[action](args)
+    if config.autoAdvanceActions[action] and (type(args) == 'table' and (not args.pause)) then
       AdvanceScript()
     end
+    if (action ~= "AddText" and type(args) == 'table' and args.pause) then
+      waitTime = waitTime or options.waitTime.value
+    end
+    
   elseif line > #defs.scripts[data.currentScript] then
     Spring.Log(widget:GetInfo().name, LOG.WARNING, "Reached end of script " .. data.currentScript)
   end
@@ -151,14 +166,30 @@ local function AdvanceText(time, toEnd)
     if (toEnd) then
       textbox:SetText(data.currentText)
     else
-      local charactersToAdd = math.floor(time * options.textspeed.value + 0.5)
+      local charactersToAdd = math.floor(time * options.textSpeed.value + 0.5)
       local newLength = currLength + charactersToAdd
       if newLength > wantedLength then newLength = wantedLength end
       local newText = string.sub(data.currentText, 1, newLength)
       textbox:SetText(newText)
     end
-  elseif toEnd then
-    AdvanceScript()
+  else
+    if toEnd then
+      AdvanceScript()
+    else
+      local wantAutoAdvance = autoAdvance	-- TODO
+      if not wantAutoAdvance then
+        local item = defs.scripts[data.currentScript][line]
+        if item then
+          local args = item[2]
+          if (type(args) == 'table') and args.pause == false then
+            wantAutoAdvance = true
+          end
+        end
+      end
+      if wantAutoAdvance then
+        waitTime = waitTime or options.waitTime.value
+      end
+    end
   end
 end
 
@@ -221,6 +252,8 @@ scriptFunctions = {
   
   AddText = function(args)
     -- TODO get i18n string
+    local instant = args.instant or options.textSpeed.value <= 0
+    
     if (args.append) then
       args.text = data.currentText .. args.text
     end
@@ -232,7 +265,7 @@ scriptFunctions = {
       --textBox:Invalidate()
     end
     
-    if args.instant or options.textspeed.value <= 0 then
+    if instant then
       textbox:SetText(args.text)
     elseif (not args.append) then
       textbox:SetText("")
@@ -256,7 +289,7 @@ scriptFunctions = {
         data.textLog[#data.textLog + 1] = args
       end
     end
-    if args.pause == false then
+    if instant and (args.pause == false) then
       AdvanceScript()
     end
   end,
@@ -743,6 +776,14 @@ function widget:Initialize()
     OnClick = {function() LoadGame() end}
   }
   
+  buttonAuto = Button:New{
+    name = "vn_buttonAuto",
+    caption = "AUTO",
+    width = MENU_BUTTON_WIDTH,
+    height = MENU_BUTTON_HEIGHT,
+    OnClick = {function() autoAdvance = not autoAdvance end}
+  }
+  
   buttonLog = Button:New{
     name = "vn_buttonLog",
     caption = "LOG",
@@ -767,7 +808,7 @@ function widget:Initialize()
     OnClick = {function() widgetHandler:RemoveWidget() end}
   }
   
-  local menuChildren = {buttonSave, buttonLoad, buttonLog, buttonOptions, buttonQuit}
+  local menuChildren = {buttonSave, buttonLoad, buttonAuto, buttonLog, buttonOptions, buttonQuit}
   menuStack = StackPanel:New{
     parent = mainWindow,
     orientation = 'vertical',
