@@ -8,6 +8,7 @@ local autoAdvanceActions = {
 	"AddImage",
 	"ModifyImage",
 	"RemoveImage",
+	"ClearText",
 	"PlaySound",
 	"PlayMusic",
 	"StopMusic",

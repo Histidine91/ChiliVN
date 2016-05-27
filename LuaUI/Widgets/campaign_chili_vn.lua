@@ -141,10 +141,10 @@ local function PlayScriptLine(line)
       args = {}
     end
     scriptFunctions[action](args)
-    if config.autoAdvanceActions[action] and (type(args) == 'table' and (not args.pause)) then
-      AdvanceScript()
+    if config.autoAdvanceActions[action] and (type(args) == 'table' and (not args.wait)) then
+      AdvanceScript(false)
     end
-    if (action ~= "AddText" and type(args) == 'table' and args.pause) then
+    if (action ~= "AddText" and type(args) == 'table' and args.wait) then
       waitTime = waitTime or options.waitTime.value
     end
     
@@ -174,37 +174,118 @@ local function AdvanceText(time, toEnd)
     end
   else
     if toEnd then
-      AdvanceScript()
+      AdvanceScript(true)
     else
-      local wantAutoAdvance = autoAdvance	-- TODO
-      if not wantAutoAdvance then
-        local item = defs.scripts[data.currentScript][line]
+      if autoAdvance then
+        waitTime = waitTime or options.waitTime.value
+      else
+        local item = defs.scripts[data.currentScript][data.currentLine]
         if item then
           local args = item[2]
-          if (type(args) == 'table') and args.pause == false then
-            wantAutoAdvance = true
+          if (type(args) == 'table') and args.wait == false then
+            waitTime = waitTime or 0
           end
         end
-      end
-      if wantAutoAdvance then
-        waitTime = waitTime or options.waitTime.value
       end
     end
   end
 end
 
-AdvanceScript = function()
+local function AdvanceAnimations(dt)
+  local toRemove = {}
+  for i=1, #animations do
+    local anim = animations[i]
+    local done = false
+    local target = anim.image and data.images[anim.image] or background
+    anim.timeElapsed = (anim.timeElapsed or 0) + dt
+    if anim.timeElapsed >= anim.time then
+      anim.timeElapsed = anim.time
+      done = true
+    end
+    
+    -- do animations
+    local proportion = anim.timeElapsed/anim.time
+    if (proportion <= 0) then
+      proportion = 0  -- animation at zero point, do nothing for now
+    else
+      anim.startX = anim.startX or target.x
+      anim.startY = anim.startY or target.y
+      anim.startAlpha = anim.startAlpha or (target.color and target.color[4]) or 0
+      if anim.endX then
+        target.x = math.floor(anim.endX * proportion + anim.startX * (1 - proportion) + 0.5)
+      end
+      if anim.endY then
+        target.y = math.floor(anim.endY * proportion + anim.startY * (1 - proportion) + 0.5)
+      end
+      --Spring.Echo(anim.startAlpha, anim.endAlpha)
+      if anim.endAlpha then
+        target.color = target.color or {1,1,1,1}
+        target.color[4] = anim.endAlpha * proportion + anim.startAlpha * (1 - proportion)
+      end
+      target:Invalidate()
+    end
+    
+    if done then
+      toRemove[#toRemove+1] = i
+    end
+  end
+  for i=#toRemove,1,-1 do
+    Spring.Echo(toRemove[i])
+    local anim = animations[toRemove[i]]
+    local target = anim.image and data.images[anim.image] or background
+    table.remove(animations, toRemove[i])
+    if (anim.removeTargetOnDone) then
+      data.images[target.id] = nil
+      target:Dispose()
+    end
+  end
+end
+
+AdvanceScript = function(skipAnims)
   --Spring.Echo("Advancing script")
   --AdvanceText(0, true)
   waitTime = nil
+  if skipAnims then
+    AdvanceAnimations(99999)
+  end
   data.currentLine = data.currentLine + 1
   PlayScriptLine(data.currentLine)
+end
+
+local function AddAnimation(args, image)
+  local anim = args.animation
+  anim.image = args.id
+  image.color = image.color or {1, 1, 1, 1}
+  image.color[4] = anim.startAlpha or 1
+  
+  anim.startX = anim.startX or args.x
+  anim.startY = anim.startY or args.y
+  
+  if (type(anim.startX) == 'string') then
+    anim.startX = image.parent.width * tonumber(anim.startX)
+  end
+  if (type(anim.startY) == 'string') then
+    anim.startY = image.parent.width * tonumber(anim.startY)
+  end
+  if (type(anim.endX) == 'string') then
+    anim.endX = image.parent.width * tonumber(anim.endX)
+  end
+  if (type(anim.endY) == 'string') then
+    anim.endY = image.parent.width * tonumber(anim.endY)
+  end
+  
+  anim.timeElapsed = anim.delay and -anim.delay or 0
+  
+  animations[#animations + 1] = Spring.Utilities.CopyTable(anim, true)
 end
 
 scriptFunctions = {
   AddBackground = function(args)
     background.file = GetFilePath(args.image)
     data.backgroundFile = args.image
+    if (args.animation) then
+      AddAnimation(args, background)
+    end
     background:Invalidate()
   end,
   
@@ -219,11 +300,11 @@ scriptFunctions = {
     args = Spring.Utilities.MergeTable(args, imageDef, false)
     
     local image = Image:New{
+      id = args.id,
       parent = background,
       file = GetFilePath(args.file),
       height = args.height,
       width = args.width,
-      animation = args.animation,
     }
     if (type(args.x) == 'string') then
       args.x = image.parent.width * tonumber(args.x)
@@ -235,8 +316,8 @@ scriptFunctions = {
     image.y = args.y - args.anchor[2]
     image.anchor = args.anchor or {}
     
-    if (animation and animation.type == "dissolve") then
-      --image.file2 = GetFilePath(args.file)
+    if (args.animation) then
+      AddAnimation(args, image)
     end
     
     data.images[args.id] = image
@@ -289,7 +370,7 @@ scriptFunctions = {
         data.textLog[#data.textLog + 1] = args
       end
     end
-    if instant and (args.pause == false) then
+    if instant and (args.wait == false) then
       AdvanceScript()
     end
   end,
@@ -333,6 +414,10 @@ scriptFunctions = {
     image.anchor = anchor
     if args.x then image.x = args.x - anchor[1] end
     if args.y then image.y = args.y - anchor[2] end
+    
+    if (args.animation) then
+      AddAnimation(args, image)
+    end
     
     image:Invalidate()
   end,
@@ -541,6 +626,7 @@ end
 
 local function ImageToTable(image)
   local imgTable = {
+    id = image.id,
     file = image.file,
     height = image.height,
     width = image.width,
@@ -548,12 +634,14 @@ local function ImageToTable(image)
     y = image.y,
     anchor = image.anchor,
     layer = image.layer,
+    color = image.color
   }
   return imgTable
 end
 
 local function TableToImage(table)
   local image = Image:New {
+    id = table.id,
     file = table.file,
     height = table.height,
     width = table.width,
@@ -561,6 +649,7 @@ local function TableToImage(table)
     y = table.y,
     anchor = table.anchor,
     layer = table.layer,
+    color = table.color,
   }
   return image
 end
@@ -568,6 +657,9 @@ end
 local function SaveGame(filename)
   filename = filename or "save.lua"
   local saveData = Spring.Utilities.CopyTable(data, true)
+  
+  -- force all image animations forward
+  AdvanceAnimations(99999)
   
   -- we can't save userdata so change all the images to tables first
   local imagesSaved = {}
@@ -698,13 +790,11 @@ function widget:Update(dt)
       AdvanceScript()
     end
   end
-  for k,v in pairs(animations) do
-     -- advance each animation 
-  end
+  AdvanceAnimations(dt)
   textTime = textTime + dt
   if textTime > TEXT_INTERVAL then
     if Spring.GetPressedKeys()[306] then  -- ctrl
-      AdvanceScript()
+      AdvanceScript(true)
     else
       AdvanceText(textTime, false)
     end
