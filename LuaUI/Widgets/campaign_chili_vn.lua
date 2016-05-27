@@ -39,15 +39,6 @@ local menuButton, menuStack
 local buttonSave, buttonLoad, buttonLog, buttonQuit
 local logPanel
 
--- TODO: external config
-local LOG_PANEL_HEIGHT = 80
-local MENU_BUTTON_HEIGHT = 32
-local MENU_BUTTON_WIDTH = 64
-local MENU_BUTTON_HEIGHT_LARGE = 36
-local MENU_BUTTON_WIDTH_LARGE = 72
-local DEFAULT_FONT_SIZE = 16
-local TEXT_INTERVAL = 0.05
-
 options_path = 'Settings/HUD Panels/Visual Novel'
 options = {
   textSpeed = {
