@@ -64,11 +64,12 @@ options = {
 local waitTime = nil -- tick down in Update()
 local waitAction  -- will we actually care what this is?
 
--- {[1]} = {target = target, type = type, startX = x, startY = y, endX = x, endY = y, startColor = color, endColor = color, time = time, timeElapsed = time ...}}
+-- {[1]} = {target = target, type = type, startX = x, startY = y, endX = x, endY = y, startAlpha = alpha, endAlpha = alpha, time = time, timeElapsed = time ...}}
 -- every Update(dt), increment time by dt and move stuff accordingly
 -- elements are removed from table once timeElapsed >= time
 local animations = {} 
 
+-- Stuff that is defined in script and should not change during play
 local defs = {
   storyInfo = {}, -- entire contents of story_info.lua
   storyDir = "",
@@ -77,6 +78,7 @@ local defs = {
   images = {} -- {[image name] = {data}}
 }
 
+-- Variable stuff (anything that needs save/load support)
 local data = {
   storyID = "",
   images = {},  -- {[id] = Chili.Image}
@@ -121,6 +123,7 @@ end
 --------------------------------------------------------------------------------
 function AdvanceScript() end  -- redefined in a bit
 
+-- Runs the action for the current line in the script
 local function PlayScriptLine(line)
   local item = defs.scripts[data.currentScript][line]
   if item then
@@ -150,6 +153,7 @@ local function StartScript(scriptName)
   PlayScriptLine(1)
 end
 
+-- Text scrolling behaviour, advance to next script line at end if so desired
 local function AdvanceText(time, toEnd)
   local wantedLength = string.len(data.currentText or "")
   local currLength = string.len(textbox.text or "")
@@ -182,6 +186,7 @@ local function AdvanceText(time, toEnd)
   end
 end
 
+-- Advance animations a frame
 local function AdvanceAnimations(dt)
   local toRemove = {}
   for i=1, #animations do
@@ -208,7 +213,6 @@ local function AdvanceAnimations(dt)
       if anim.endY then
         target.y = math.floor(anim.endY * proportion + anim.startY * (1 - proportion) + 0.5)
       end
-      --Spring.Echo(anim.startAlpha, anim.endAlpha)
       if anim.endAlpha then
         target.color = target.color or {1,1,1,1}
         target.color[4] = anim.endAlpha * proportion + anim.startAlpha * (1 - proportion)
@@ -221,7 +225,6 @@ local function AdvanceAnimations(dt)
     end
   end
   for i=#toRemove,1,-1 do
-    Spring.Echo(toRemove[i])
     local anim = animations[toRemove[i]]
     local target = anim.image and data.images[anim.image] or background
     table.remove(animations, toRemove[i])
@@ -232,6 +235,7 @@ local function AdvanceAnimations(dt)
   end
 end
 
+-- Go to next line in script
 AdvanceScript = function(skipAnims)
   --Spring.Echo("Advancing script")
   --AdvanceText(0, true)
@@ -243,6 +247,7 @@ AdvanceScript = function(skipAnims)
   PlayScriptLine(data.currentLine)
 end
 
+-- Register an animation to play
 local function AddAnimation(args, image)
   local anim = args.animation
   anim.image = args.id
@@ -461,6 +466,7 @@ scriptFunctions = {
   end,
 }
 
+-- Show/hide the menu buttons
 local function ToggleMenu()
   if menuVisible then
     mainWindow:RemoveChild(menuStack)
@@ -472,6 +478,7 @@ local function ToggleMenu()
   menuVisible = not menuVisible
 end
 
+-- This forces the background to the back after toggling GUI (so bg doesn't draw in front of UI elements)
 local function ResetMainLayers(force)
   --[[
   if force or (not uiHidden) then
@@ -509,6 +516,7 @@ local function RemoveLogPanel()
   ResetMainLayers()
 end
 
+-- Dialog log panel
 local function CreateLogPanel()
   -- already have log panel, close it
   if (logPanel ~= nil) then
