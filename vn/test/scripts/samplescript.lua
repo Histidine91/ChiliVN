@@ -4,7 +4,7 @@ local scripts = {
 		{"AddText", {speaker = "narrator", textID = "intro1", text = "It was a dark and stormy night... well, not really..."}},
 		{"AddImage", {id = "eileen", defID = "eileen_happy", x = "0.6", y = "1", animation = {startAlpha = 0, endAlpha = 1, time = 0.25} }},
 		{"AddText", {speaker = "eileen", textID = "intro2", text = "Hey guys, what's up?", instant = true}},
-		{"PlaySound", {file = "../../sounds/explosion/ex_ultra8.wav"}},
+		{"PlaySound", {file = --[["../../"]] "sounds/explosion/ex_ultra8.wav"}},
 		{"ShakeScreen", {time = 2}},
 		{"Wait", 3},
 		{"JumpScript", "intro2"}
