@@ -271,15 +271,21 @@ local function AdvanceAnimations(dt)
     else
       anim.startX = anim.startX or target.x
       anim.startY = anim.startY or target.y
-      anim.startAlpha = anim.startAlpha or (target.color and target.color[4]) or 0
+      anim.startColor = anim.startColor or target.color or {1, 1, 1, 1}
+      anim.startAlpha = anim.startAlpha or (target.color and target.color[4]) or 1
       if anim.endX then
         target.x = math.floor(anim.endX * proportion + anim.startX * (1 - proportion) + 0.5)
       end
       if anim.endY then
         target.y = math.floor(anim.endY * proportion + anim.startY * (1 - proportion) + 0.5)
       end
-      if anim.endAlpha then
-        target.color = target.color or {1,1,1,1}
+      if anim.endColor then
+        target.color = target.color or {1, 1, 1, 1}
+        for i=1,4 do
+          target.color[i] = anim.endColor[i] * proportion + anim.startColor[i] * (1 - proportion)
+        end
+      elseif anim.endAlpha then
+        target.color = target.color or {1, 1, 1, 1}
         target.color[4] = anim.endAlpha * proportion + anim.startAlpha * (1 - proportion)
       end
       target:Invalidate()
@@ -366,7 +372,7 @@ end
 local function AddAnimation(args, image)
   local anim = args.animation
   anim.image = args.id
-  image.color = image.color or {1, 1, 1, 1}
+  image.color = args.startColor or image.color or {1, 1, 1, 1}
   image.color[4] = anim.startAlpha or 1
   
   anim.startX = anim.startX or args.x

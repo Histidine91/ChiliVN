@@ -1,6 +1,6 @@
 local scripts = {
 	intro = {
-		{"AddBackground", {file = "bg/rainbowbridge.jpg", animation = {startAlpha = 0, endAlpha = 1, time = 1}}},
+		{"AddBackground", {file = "bg/rainbowbridge.jpg", animation = {startColor = {0,0,0,1}, endColor = {1,1,1,1}, time = 3}}},
 		{"AddText", {speakerID = "narrator", textID = "intro1", text = "It was a dark and stormy night... well, not really..."}},
 		{"AddImage", {id = "eileen", defID = "eileen_happy", x = "0.6", y = "1", animation = {startAlpha = 0, endAlpha = 1, time = 0.25} }},
 		{"AddText", {speakerID = "eileen", textID = "intro2", text = "Hey guys, what's up?", instant = true}},
