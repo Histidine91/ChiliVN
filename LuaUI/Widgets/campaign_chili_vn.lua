@@ -2,7 +2,7 @@
 --------------------------------------------------------------------------------
 function widget:GetInfo()
   return {
-    name      = "Chili VN",
+    name      = "Chili Visual Novel",
     desc      = "Displays pink-haired anime babes",
     author    = "KingRaptor (L.J. Lim)",
     date      = "2016.05.20",
