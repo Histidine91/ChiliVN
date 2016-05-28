@@ -320,6 +320,10 @@ local function SetPortrait(image)
   portrait:Invalidate()
 end
 
+local function SubstituteVars(str)
+  return string.gsub(str, "%{%{(.-)%}%}", function(a) return data.vars[a] or "" end)
+end
+
 scriptFunctions = {
   AddBackground = function(args)
     background.file = GetFilePath(args.image)
@@ -375,6 +379,7 @@ scriptFunctions = {
   AddText = function(args)
     -- TODO get i18n string
     local instant = args.instant or options.textSpeed.value <= 0
+    args.text = SubstituteVars(args.text)
     
     if (args.append) then
       args.text = data.currentText .. args.text
@@ -501,9 +506,21 @@ scriptFunctions = {
     data.images[args.id] = nil
   end,
   
+  RemoveVars = function(args)
+    for i=1,#args do
+       data.vars[args[i]] = nil 
+    end
+  end,
+  
   SetPortrait = function(args)
     local file = (type(args) == 'string' and args) or (type(args) == 'table' and args.file)
     SetPortrait(file)
+  end,
+  
+  SetVars = function(args)
+    for i,v in pairs(args) do
+      data.vars[i] = v 
+    end
   end,
   
   ShakeScreen = function(args)
@@ -679,6 +696,14 @@ local function CreateLogPanel()
       },
     })
   end
+end
+
+local function GetDefs()
+  return defs
+end
+
+local function GetData()
+  return data
 end
 
 --------------------------------------------------------------------------------
@@ -1053,11 +1078,18 @@ function widget:Initialize()
     OnMouseDown = {function(self) return true end},
   }
   
+  WG.VisualNovel = {
+    GetDefs = GetDefs,
+    GetData = GetData,
+    StartScript = StartScript,
+    AdvanceScript = AdvanceScript
+  }
+  
   LoadTestStory()
 end
 
 function widget:Shutdown()
-
+  WG.VisualNovel = nil
 end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------

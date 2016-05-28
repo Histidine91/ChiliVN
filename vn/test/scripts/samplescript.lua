@@ -11,6 +11,7 @@ local scripts = {
 	},
 	intro2 = {
 		--{"PlayMusic", {track = "music/Butterfly_Tea_-_The_Last_Mission.ogg", loop = true}},
+		{"SetVars", {["VN"] = "visual novel", ["moveFromSideToSide"] = "move from side to side"}},
 		-- test really long strings
 		{"AddText", {speaker = "eileen", textID = "intro3", text = "Many of your fathers and brothers have perished valiantly in the face of a contemptible enemy. We must never forget what the Federation has done to our people! My brother, Garma Zabi, has shown us these virtues through our own valiant sacrifice. By focusing our anger and sorrow, we are finally in a position where victory is within our grasp, and once again, our most cherished nation will flourish. Victory is the greatest tribute we can pay those who sacrifice their lives for us! Rise, our people, rise! Take your sorrow and turn it into anger! Zeon thirsts for the strength of its people! SIEG ZEON!! SIEG ZEON!! SIEG ZEON!!!"}},
 		{"AddText", {textID = "intro2", text = "...", size = 24}},
@@ -21,7 +22,8 @@ local scripts = {
 		{"AddText", {speaker = "eileen", textID = "intro5", text = " *sigh*", append = true, setPortrait = false}},
 		{"ModifyImage", {id = "eileen", animation = {endX = "0.2", time = 1} }},
 		{"ModifyImage", {id = "eileen", animation = {endX = 700, time = 1, delay = 1} }},
-		{"AddText", {speaker = "eileen", textID = "intro6", text = "Look, just because I can move from side to side doesn't make this an adequate visual novel engine!", wait = false}},
+		--{"RemoveVars", {"moveFromSideToSide"}},
+		{"AddText", {speaker = "eileen", textID = "intro6", text = "Look, just because I can {{moveFromSideToSide}} doesn't make this an adequate {{VN}} engine!", wait = false}},
 		{"AddText", {speaker = "eileen", textID = "intro5", text = " Seriously...", append = true}},
 		--{"RemoveImage", {id = "eileen"}},
 		{"ModifyImage", {id = "eileen", animation = {endAlpha = 0.2, time = 0.5, removeTargetOnDone = true} }},
