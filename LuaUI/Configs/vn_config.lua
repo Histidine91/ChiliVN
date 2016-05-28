@@ -33,7 +33,7 @@ local autoAdvanceActions = {
 	"StopMusic",
 	"ShakeScreen",
 	"SetVars",
-	"RemoveVars",
+	"UnsetVars",
 }
 
 for i=1,#autoAdvanceActions do

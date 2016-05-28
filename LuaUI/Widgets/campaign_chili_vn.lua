@@ -621,23 +621,19 @@ scriptFunctions = {
     end
   end,
   
-  -- TODO: implement separate hideImage
+  -- TODO: implement separate hideImage?
   RemoveImage = function(args)
-    local image = data.images[args.id]
+    local argsType = type(args)
+    local id = (argsType == 'string' and args) or (argsType == 'table' and args.id)
+    local image = data.images[id]
     if not image then
-      Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempt to modify nonexistent image " .. args.id)
+      Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempt to modify nonexistent image " .. id)
       return
     end
     image:Dispose()
-    data.images[args.id] = nil
+    data.images[id] = nil
   end,
-  
-  RemoveVars = function(args)
-    for i=1,#args do
-       data.vars[args[i]] = nil 
-    end
-  end,
-  
+   
   SetPortrait = function(args)
     local file = (type(args) == 'string' and args) or (type(args) == 'table' and args.file)
     SetPortrait(file)
@@ -661,6 +657,12 @@ scriptFunctions = {
       Spring.StopSoundStream()
     end
     data.currentMusic = nil
+  end,
+  
+  UnsetVars = function(args)
+    for i=1,#args do
+       data.vars[args[i]] = nil 
+    end
   end,
   
   Wait = function(args)
