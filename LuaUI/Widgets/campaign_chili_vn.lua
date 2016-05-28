@@ -441,7 +441,7 @@ end
 scriptFunctions = {
   AddBackground = function(args)
     local argsType = type(args)
-    local image = (argsType == 'string' and args) or (argsType == 'table' and args.image)
+    local image = (argsType == 'string' and args) or (argsType == 'table' and args.file)
     background.file = GetFilePath(image)
     data.backgroundFile = image
     if (argsType == 'table' and args.animation) then
@@ -889,7 +889,7 @@ local function LoadGame(filename)
   Cleanup()
   
   data = VFS.Include(path)
-  scriptFunctions.AddBackground({image = data.backgroundFile, wait = true})
+  scriptFunctions.AddBackground({file = data.backgroundFile, wait = true})
   
   -- readd images from saved data
   data.images = {}
