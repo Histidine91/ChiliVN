@@ -164,7 +164,7 @@ local function PlayScriptLine(line)
       args = {}
     end
     scriptFunctions[action](args)
-    if config.autoAdvanceActions[action] and (type(args) == 'table' and (not args.wait)) then
+    if config.autoAdvanceActions[action] and (type(args) ~= 'table' or (not args.wait)) then
       AdvanceScript(false)
     end
     if (action ~= "AddText" and type(args) == 'table' and args.wait) then
@@ -440,9 +440,11 @@ end
 
 scriptFunctions = {
   AddBackground = function(args)
-    background.file = GetFilePath(args.image)
-    data.backgroundFile = args.image
-    if (args.animation) then
+    local argsType = type(args)
+    local image = (argsType == 'string' and args) or (argsType == 'table' and args.image)
+    background.file = GetFilePath(image)
+    data.backgroundFile = image
+    if (argsType == 'table' and args.animation) then
       AddAnimation(args, background)
     end
     background:Invalidate()
@@ -594,23 +596,29 @@ scriptFunctions = {
   end,
   
   PlayMusic = function(args)
-    if not args.track then return end
+    local argsType = type(args)
+    local track = (argsType == 'string' and args) or (argsType == 'table' and args.track)
+    if not track then return end
     
-    local track = GetFilePath(args.track)
-    local intro = args.intro and GetFilePath(args.intro) or track
-    if args.loop and WG.Music and WG.Music.StartLoopingTrack then
-      WG.Music.StartLoopingTrack(intro, track)
+    local trackFull = GetFilePath(track)
+    local intro = (argsType == 'table' and args.intro and GetFilePath(args.intro)) or trackFull
+    if argsType == 'table' and args.loop and WG.Music and WG.Music.StartLoopingTrack then
+      WG.Music.StartLoopingTrack(intro, trackFull)
     elseif WG.Music then
-      WG.Music.StartTrack(track)
+      WG.Music.StartTrack(trackFull)
     else
       Spring.StopSoundStream()
-      Spring.PlaySoundStream(track, 1)
+      Spring.PlaySoundStream(trackFull, 1)
     end
-    data.currentMusic = args
+    data.currentMusic = (argsType == 'table') and args or {track = track}
   end,
   
   PlaySound = function(args)
-    Spring.PlaySoundFile(GetFilePath(args.file), args.volume or 1, args.channel)
+    if(type(args) == 'table') then
+      Spring.PlaySoundFile(GetFilePath(args.file), args.volume or 1, args.channel)
+    else
+      Spring.PlaySoundFile(GetFilePath(args))
+    end
   end,
   
   -- TODO: implement separate hideImage
