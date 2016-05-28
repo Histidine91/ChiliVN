@@ -24,13 +24,31 @@ local scripts = {
 		{"ModifyImage", {id = "eileen", animation = {endX = 700, time = 1, delay = 1} }},
 		--{"RemoveVars", {"moveFromSideToSide"}},
 		{"AddText", {speaker = "eileen", textID = "intro6", text = "Look, just because I can {{moveFromSideToSide}} doesn't make this an adequate {{VN}} engine!", wait = false}},
-		{"AddText", {speaker = "eileen", textID = "intro5", text = " Seriously...", append = true}},
+		{"AddText", {speaker = "eileen", textID = "intro6_1", text = " Seriously...", append = true}},
 		--{"RemoveImage", {id = "eileen"}},
 		{"ModifyImage", {id = "eileen", animation = {endAlpha = 0.2, time = 0.5, removeTargetOnDone = true} }},
 		{"ClearText"},
 		--{"StopMusic"},
 		{"Wait"},
-		{"AddText", {speaker = "narrator", textID = "intro7", text = "T-T-That's all, folks!"}},
+		{"AddText", {textID = "intro7", text = "CHOOSE YOUR FATE:", wait = false}},
+		{"ChoiceDialog", {
+			{text = [[Say "lololol"]], action = function() scriptFunctions.JumpScript("intro3_1") end },
+			{text = [[Say "ahahahahaha"]], action = function() scriptFunctions.JumpScript("intro3_2") end },
+		}},
+	},
+	
+	intro3_1 = {
+		{"AddText", {textID = "intro8_1", text = "lololol"}},
+		{"JumpScript", "introEnd"},
+	},
+	
+	intro3_2 = {
+		{"AddText", {textID = "intro8_1", text = "ahahahahaha"}},
+		{"JumpScript", "introEnd"},
+	},
+	
+	introEnd = {
+		{"AddText", {speaker = "narrator", textID = "intro_end", text = "T-T-That's all, folks!"}},
 		{"Exit"}
 	}
 }

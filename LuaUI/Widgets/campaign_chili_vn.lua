@@ -39,6 +39,7 @@ local background
 local menuButton, menuStack
 local buttonSave, buttonLoad, buttonLog, buttonQuit
 local logPanel
+local panelChoiceDialog
 
 options_path = 'Settings/HUD Panels/Visual Novel'
 options = {
@@ -89,14 +90,14 @@ local data = {
   backgroundFile = "",  -- path as specified in script (before prepending dir)
   portraitFile = "",  -- ditto
   currentText = "", -- the full line (textbox will not contain the full line until text writing has reached the end)
-  currentMusic = {},  -- PlayMusic arg
+  currentMusic = nil,  -- PlayMusic arg
 
   currentScript = "",
 
   currentLine = 1,
 }
 
-local scriptFunctions = {}
+scriptFunctions = {}  -- not local so script can access it
 
 local menuVisible = false
 local uiHidden = false
@@ -125,12 +126,30 @@ local function GetFilePath(givenPath)
     return defs.storyDir .. givenPath
   end
 end
+
+-- This forces the background to the back after toggling GUI (so bg doesn't draw in front of UI elements)
+local function ResetMainLayers(force)
+  --[[
+  if force or (not uiHidden) then
+    textPanel:SetLayer(1)
+    menuButton:SetLayer(2)
+    menuStack:SetLayer(3)
+  end
+  ]]--
+  background:SetLayer(99)
+end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 function AdvanceScript() end  -- redefined in a bit
 
+local function GetCurrentScriptLineItem()
+  local item = defs.scripts[data.currentScript][data.currentLine]
+  return item
+end
+
 -- Runs the action for the current line in the script
 local function PlayScriptLine(line)
+  line = line or data.currentLine
   local item = defs.scripts[data.currentScript][line]
   if item then
     local action = item[1]
@@ -180,7 +199,7 @@ local function AdvanceText(time, toEnd)
       if autoAdvance then
         waitTime = waitTime or options.waitTime.value
       else
-        local item = defs.scripts[data.currentScript][data.currentLine]
+        local item = GetCurrentScriptLineItem()
         if item then
           local args = item[2]
           if (type(args) == 'table') and args.wait == false then
@@ -277,12 +296,62 @@ end
 AdvanceScript = function(skipAnims)
   --Spring.Echo("Advancing script")
   --AdvanceText(0, true)
+  if panelChoiceDialog ~= nil then
+    return
+  end
   waitTime = nil
   if skipAnims then
     AdvanceAnimations(99999)
   end
   data.currentLine = data.currentLine + 1
   PlayScriptLine(data.currentLine)
+end
+
+
+local function RemoveChoiceDialogPanel()
+  if (panelChoiceDialog == nil) then return end
+  panelChoiceDialog:Dispose()
+  panelChoiceDialog = nil
+end
+
+local function CreateChoiceDialogPanel(choices)
+  if (panelChoiceDialog ~= nil) then
+    RemoveChoiceDialogPanel()
+  end
+  panelChoiceDialog = Panel:New{
+    parent = mainWindow,
+    name = "vn_panelChoiceDialog",
+    x = (mainWindow.width - DIALOG_PANEL_WIDTH)/2,
+    y = "40%",
+    height = #choices * DIALOG_BUTTON_HEIGHT + 10,
+    width = DIALOG_PANEL_WIDTH,
+  }
+  panelChoiceDialog:SetLayer(1)
+  
+  local stackChoiceDialog= StackPanel:New{
+    parent = panelChoiceDialog;
+    name = "vn_stackChoiceDialog",
+    orientation = 'vertical',
+    autosize = false,
+    resizeItems = true,
+    centerItems = false,
+    x = 0, y = 0, right = 0, bottom = 0
+  }
+  
+  for i=1,#choices do
+    local choice = choices[i]
+    local text = choice.text
+    local func = choice.action
+    
+    Button:New {
+      parent = stackChoiceDialog,
+      caption = text,
+      width = "100%",
+      height = DIALOG_BUTTON_HEIGHT,
+      font = {size = DIALOG_FONT_SIZE},
+      OnClick = { function() RemoveChoiceDialogPanel(); func(); ResetMainLayers(); end },
+    }
+  end
 end
 
 -- Register an animation to play
@@ -435,6 +504,10 @@ scriptFunctions = {
     SetPortrait(nil)
   end,
   
+  ChoiceDialog = function(args)
+    CreateChoiceDialogPanel(args)
+  end,
+  
   Exit = function()
     widgetHandler:RemoveWidget()
   end,
@@ -553,20 +626,7 @@ local function ToggleMenu()
     mainWindow:AddChild(menuStack)
   end
   background:SetLayer(99999)
-  --Spring.Echo("lol")
   menuVisible = not menuVisible
-end
-
--- This forces the background to the back after toggling GUI (so bg doesn't draw in front of UI elements)
-local function ResetMainLayers(force)
-  --[[
-  if force or (not uiHidden) then
-    textPanel:SetLayer(1)
-    menuButton:SetLayer(2)
-    menuStack:SetLayer(3)
-  end
-  ]]--
-  background:SetLayer(99)
 end
 
 local function ToggleUI()
@@ -576,12 +636,18 @@ local function ToggleUI()
     if menuVisible then
       mainWindow:AddChild(menuStack)
     end
+    if panelChoiceDialog ~= nil then
+      mainWindow:AddChild(panelChoiceDialog)
+    end
     ResetMainLayers(true)
   else
     mainWindow:RemoveChild(textPanel)
     mainWindow:RemoveChild(menuButton)
     if menuVisible then
       mainWindow:RemoveChild(menuStack)
+    end
+    if panelChoiceDialog ~= nil then
+      mainWindow:RemoveChild(panelChoiceDialog)
     end
   end
   uiHidden = not uiHidden
@@ -621,7 +687,6 @@ local function CreateLogPanel()
       }
     }
   }
-  --Spring.Echo("wololo")
   logPanel:SetLayer(1)
   local logScroll = ScrollPanel:New {
     parent = logPanel,
@@ -775,7 +840,7 @@ local function LoadGame(filename)
   --end
   
   data = VFS.Include(path)
-  scriptFunctions.AddBackground({image = data.backgroundFile, pause = true})
+  scriptFunctions.AddBackground({image = data.backgroundFile, wait = true})
   
   -- readd images from saved data
   data.images = {}
@@ -795,11 +860,16 @@ local function LoadGame(filename)
     lastText.noLog = true
     lastText.append = false
     lastText.instant = true
+    lastText.wait = true
     scriptFunctions.AddText(lastText)
   end
+  scriptFunctions.PlayMusic({track = data.currentMusic, wait = true})
   
-  scriptFunctions.PlayMusic(data.currentMusic)
-  
+  RemoveChoiceDialogPanel()
+  local scriptItem = GetCurrentScriptLineItem()
+  if scriptItem and scriptItem[1] == "ChoiceDialog" then
+    PlayScriptLine()
+  end
   --for screenID, screen in pairs(data.subscreens) do
   --  mainWindow:AddChild(screen)
   --end
@@ -812,7 +882,6 @@ local function LoadStory(storyID)
   local storyPath = defs.storyDir .. "story_info.lua"
   if not VFS.FileExists(storyPath, VFS.RAW_FIRST) then
     Spring.Log(widget:GetInfo().name, LOG.ERROR, "VN story " .. storyID .. " does not exist")
-    --Spring.Echo("VN story " .. storyPath .. " does not exist")
     return
   end
   defs.storyInfo = VFS.Include(storyPath)
