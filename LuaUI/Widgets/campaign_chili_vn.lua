@@ -433,6 +433,9 @@ local function CloseStory()
     characters = {},
     images = {}
   }
+  if (mainWindow.parent) then
+    screen0:RemoveChild(mainWindow)
+  end
 end
 
 --------------------------------------------------------------------------------
@@ -1217,6 +1220,9 @@ function widget:Initialize()
     StartScript = StartScript,
     AdvanceScript = AdvanceScript,
     StartStory = StartStory,
+    CloseStory = CloseStory,
+    
+    scriptFunctions = scriptFunctions,
   }
   
   StartStory("test")
