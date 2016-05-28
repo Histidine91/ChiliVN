@@ -5,6 +5,7 @@ local scripts = {
 		{"AddImage", {id = "eileen", defID = "eileen_happy", x = "0.6", y = "1", animation = {startAlpha = 0, endAlpha = 1, time = 0.25} }},
 		{"AddText", {speakerID = "eileen", textID = "intro2", text = "Hey guys, what's up?", instant = true}},
 		{"PlaySound", --[["../../"]] "sounds/explosion/ex_ultra8.wav"},
+		--{"CustomAction", function() Spring.Echo("lol"); Spring.SendCommands('pause 1') end},
 		{"ShakeScreen", {time = 2}},
 		{"Wait", 3},
 		{"JumpScript", "intro2"}

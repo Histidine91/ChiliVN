@@ -34,6 +34,7 @@ local autoAdvanceActions = {
 	"ShakeScreen",
 	"SetVars",
 	"UnsetVars",
+	"CustomAction",
 }
 
 for i=1,#autoAdvanceActions do

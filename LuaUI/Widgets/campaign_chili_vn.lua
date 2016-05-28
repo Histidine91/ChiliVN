@@ -567,6 +567,12 @@ scriptFunctions = {
     CreateChoiceDialogPanel(args)
   end,
   
+  CustomAction = function(args)
+    local argsType = type(args)
+    local func = (argsType == 'function' and args) or (argsType == 'table' and args.func)
+    func()
+  end,
+  
   Exit = function()
     widgetHandler:RemoveWidget()
   end,
@@ -645,7 +651,7 @@ scriptFunctions = {
     image:Dispose()
     data.images[id] = nil
   end,
-   
+  
   SetPortrait = function(args)
     local file = (type(args) == 'string' and args) or (type(args) == 'table' and args.file)
     SetPortrait(file)
