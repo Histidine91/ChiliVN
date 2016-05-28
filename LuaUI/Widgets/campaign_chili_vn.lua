@@ -514,18 +514,18 @@ scriptFunctions = {
       textbox:SetText("")
     end
     
-    if (args.speaker) then
-      local speaker = defs.characters[args.speaker]
+    if (args.speakerID) then
+      local speaker = defs.characters[args.speakerID]
       local color = speaker.color
       --nameLabel:SetCaption(string.char(color[4], color[1], color[2], color[3]).. speaker.name.."\008")
       nameLabel.font.color = color
-      nameLabel:SetText(speaker.name)
+      nameLabel:SetText(args.name or speaker.name)
       if args.setPortrait ~= false then
         SetPortrait(speaker.portrait)
       end
     else
       --nameLabel:SetCaption("")
-      nameLabel:SetText("")
+      nameLabel:SetText(args.name or "")
       if args.setPortrait ~= false then
         SetPortrait(nil)
       end
@@ -782,7 +782,7 @@ local function CreateLogPanel()
     if (not entry) then
       break
     end
-    local speaker = entry.speaker and defs.characters[entry.speaker]
+    local speaker = entry.speakerID and defs.characters[entry.speakerID]
     local color = speaker and speaker.color or nil
       
     logScroll:AddChild(Panel:New {
@@ -792,7 +792,7 @@ local function CreateLogPanel()
       children = {
         TextBox:New {
           align = "left",
-          text = speaker and speaker.name or "",  -- todo i18n
+          text = speaker and speaker.name or entry.name or "",  -- todo i18n
           x = 4,
           y = 4,
           width = 96,
