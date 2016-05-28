@@ -943,6 +943,10 @@ end
 --------------------------------------------------------------------------------
 
 local function LoadStory(storyID)
+  if (data.storyID ~= nil) then
+    CloseStory()
+  end
+  
   defs.storyDir = config.VN_DIR .. storyID .. "/"
   local storyPath = defs.storyDir .. "story_info.lua"
   if not VFS.FileExists(storyPath, VFS.RAW_FIRST) then
@@ -992,13 +996,8 @@ local function LoadStory(storyID)
   Spring.Log(widget:GetInfo().name, LOG.INFO, "VN story " .. defs.storyInfo.name .. " loaded")
 end
 
-
-local function StartStory(storyName)
-  if (data.storyID ~= nil) then
-    CloseStory()
-  end
-
-  LoadStory(storyName)
+local function StartStory(storyID)
+  LoadStory(storyID)
   StartScript(defs.storyInfo.startScript)
 end
 
@@ -1231,6 +1230,7 @@ function widget:Initialize()
     StartScript = StartScript,
     AdvanceScript = AdvanceScript,
     StartStory = StartStory,
+    LoadStory = LoadStory,
     CloseStory = CloseStory,
     
     scriptFunctions = scriptFunctions,
