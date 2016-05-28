@@ -4,7 +4,7 @@ function widget:GetInfo()
   return {
     name      = "Chili VN",
     desc      = "Displays pink-haired anime babes",
-    author    = "KingRaptor",
+    author    = "KingRaptor (L.J. Lim)",
     date      = "2016.05.20",
     license   = "GNU GPL, v2 or later",
     layer     = 0,
@@ -82,7 +82,7 @@ local defs = {
 
 -- Variable stuff (anything that needs save/load support)
 local data = {
-  storyID = "",
+  storyID = nil,
   images = {},  -- {[id] = Chili.Image}
   subscreens = {},
   vars = {},
@@ -92,7 +92,7 @@ local data = {
   currentText = "", -- the full line (textbox will not contain the full line until text writing has reached the end)
   currentMusic = nil,  -- PlayMusic arg
 
-  currentScript = "",
+  currentScript = nil,
 
   currentLine = 1,
 }
@@ -149,6 +149,10 @@ end
 
 -- Runs the action for the current line in the script
 local function PlayScriptLine(line)
+  if (not data.currentScript) then
+    Spring.Log(widget:GetInfo().name, LOG.ERROR, "No story loaded")
+    return
+  end
   line = line or data.currentLine
   local item = defs.scripts[data.currentScript][line]
   if item then
@@ -173,6 +177,10 @@ local function PlayScriptLine(line)
 end
 
 local function StartScript(scriptName)
+  if mainWindow.parent == nil then
+    screen0:AddChild(mainWindow)
+    mainWindow:SetLayer(1)  -- draw above other UI elements
+  end
   data.currentScript = scriptName
   data.currentLine = 1
   PlayScriptLine(1)
@@ -393,6 +401,43 @@ local function SubstituteVars(str)
   return string.gsub(str, "%{%{(.-)%}%}", function(a) return data.vars[a] or "" end)
 end
 
+-- disposes of existing stuff
+local function Cleanup()
+  for imageID, image in pairs(data.images) do
+    image:Dispose()
+  end
+  --for screenID, screen in pairs(data.subscreens) do
+  --  screen:Dispose()
+  --end
+  scriptFunctions.StopMusic()
+  
+  data.images = {}
+  data.subscreens = {}
+  data.vars = {}
+  data.textLog = {}
+  data.backgroundFile = ""
+  data.portraitFile = ""
+  data.currentText = ""
+  data.currentMusic = nil
+  data.currentScript = nil
+  data.currentLine = 1
+end
+
+local function CloseStory()
+  Cleanup()
+  data.storyID = nil
+  defs = {
+    storyInfo = {},
+    storyDir = "",
+    scripts = {},
+    characters = {},
+    images = {}
+  }
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
 scriptFunctions = {
   AddBackground = function(args)
     background.file = GetFilePath(args.image)
@@ -603,7 +648,7 @@ scriptFunctions = {
   
   StopMusic = function(args)
     if WG.Music and WG.Music.StopTrack then
-      WG.Music.StopTrack((not args.continue) or true)
+      WG.Music.StopTrack(args and (not args.continue) or true)
     else
       Spring.StopSoundStream()
     end
@@ -832,12 +877,8 @@ local function LoadGame(filename)
     return
   end
   
-  for imageID, image in pairs(data.images) do
-    image:Dispose()
-  end
-  --for screenID, screen in pairs(data.subscreens) do
-  --  screen:Dispose()
-  --end
+  AdvanceAnimations(99999)
+  Cleanup()
   
   data = VFS.Include(path)
   scriptFunctions.AddBackground({image = data.backgroundFile, wait = true})
@@ -928,8 +969,12 @@ local function LoadStory(storyID)
 end
 
 
-local function LoadTestStory()
-  LoadStory("test")
+local function StartStory(storyName)
+  if (data.storyID ~= nil) then
+    CloseStory()
+  end
+
+  LoadStory(storyName)
   StartScript(defs.storyInfo.startScript)
 end
 
@@ -938,6 +983,10 @@ end
 local textTime = 0
 
 function widget:Update(dt)
+  if (data.currentScript == nil) then
+    return
+  end
+  
   if (waitTime) then
     waitTime = waitTime - dt
     if waitTime <= 0 then
@@ -1053,7 +1102,12 @@ function widget:Initialize()
     OnClick = {function() widgetHandler:RemoveWidget() end}
   }
   
-  local menuChildren = {buttonSave, buttonLoad, buttonAuto, buttonLog, buttonOptions, buttonQuit}
+  local menuChildren
+  if ALLOW_SAVE_LOAD then
+    menuChildren = {buttonSave, buttonLoad, buttonAuto, buttonLog, buttonOptions, buttonQuit}
+  else
+    menuChildren = {buttonAuto, buttonLog, buttonOptions, buttonQuit}
+  end
   menuStack = StackPanel:New{
     parent = mainWindow,
     orientation = 'vertical',
@@ -1122,9 +1176,7 @@ function widget:Initialize()
       size = DEFAULT_FONT_SIZE;
       shadow = true;
     },
-    
   }
-  mainWindow:SetLayer(1)
   background = Image:New{
     parent = mainWindow,
     name = "vn_background",
@@ -1147,14 +1199,17 @@ function widget:Initialize()
     OnMouseDown = {function(self) return true end},
   }
   
+  screen0:RemoveChild(mainWindow)
+  
   WG.VisualNovel = {
     GetDefs = GetDefs,
     GetData = GetData,
     StartScript = StartScript,
-    AdvanceScript = AdvanceScript
+    AdvanceScript = AdvanceScript,
+    StartStory = StartStory,
   }
   
-  LoadTestStory()
+  StartStory("test")
 end
 
 function widget:Shutdown()
