@@ -89,7 +89,7 @@ local data = {
   textLog = {}, -- {[1] = <AddText args table>, [2] = ...}
   backgroundFile = "",  -- path as specified in script (before prepending dir)
   portraitFile = "",  -- ditto
-  currentText = "", -- the full line (textbox will not contain the full line until text writing has reached the end)
+  currentText = nil, -- the full line (textbox will not contain the full line until text writing has reached the end)
   currentMusic = nil,  -- PlayMusic arg
 
   currentScript = nil,
@@ -410,6 +410,9 @@ local function Cleanup()
   --  screen:Dispose()
   --end
   scriptFunctions.StopMusic()
+  SetPortrait(nil)
+  textbox:SetText("")
+  nameLabel:SetText("")
   
   data.images = {}
   data.subscreens = {}
@@ -417,7 +420,7 @@ local function Cleanup()
   data.textLog = {}
   data.backgroundFile = ""
   data.portraitFile = ""
-  data.currentText = ""
+  data.currentText = nil
   data.currentMusic = nil
   data.currentScript = nil
   data.currentLine = 1
@@ -501,7 +504,7 @@ scriptFunctions = {
     args.text = SubstituteVars(args.text)
     
     if (args.append) then
-      args.text = data.currentText .. args.text
+      args.text = (data.currentText or "") .. args.text
     end
     data.currentText = args.text
     
@@ -550,7 +553,7 @@ scriptFunctions = {
     nameLabel:SetText("")
     nameLabel:Invalidate()
     textbox:SetText("")
-    data.currentText = ""
+    data.currentText = nil
     SetPortrait(nil)
   end,
   
@@ -797,10 +800,10 @@ local function CreateLogPanel()
       children = {
         TextBox:New {
           align = "left",
-          text = speaker and speaker.name or entry.name or "",  -- todo i18n
+          text = entry.name or (speaker and speaker.name) or "",  -- todo i18n
           x = 4,
           y = 4,
-          width = 96,
+          right = 4,
           height = 20,
           font    = {
             size = 16;
@@ -813,7 +816,7 @@ local function CreateLogPanel()
           align = "left",
           x = 4,
           y = 28,
-          width = "100%",
+          right = 4,
           height = 32,
         }
       },
@@ -908,14 +911,16 @@ local function LoadGame(filename)
   end
   data.imagesSaved = nil
   
-  local lastText = data.textLog[#data.textLog]
-  if type(lastText) == 'table' then
-    lastText = Spring.Utilities.CopyTable(lastText, true)
-    lastText.noLog = true
-    lastText.append = false
-    lastText.instant = true
-    lastText.wait = true
-    scriptFunctions.AddText(lastText)
+  if data.currentText then
+    local lastText = data.textLog[#data.textLog]
+    if type(lastText) == 'table' then
+      lastText = Spring.Utilities.CopyTable(lastText, true)
+      lastText.noLog = true
+      lastText.append = false
+      lastText.instant = true
+      lastText.wait = true
+      scriptFunctions.AddText(lastText)
+    end
   end
   scriptFunctions.PlayMusic({track = data.currentMusic, wait = true})
   
