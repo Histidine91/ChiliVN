@@ -966,11 +966,18 @@ local function LoadStory(storyID)
     Spring.Log(widget:GetInfo().name, LOG.ERROR, "VN story " .. storyID .. " does not exist")
     return
   end
+  
   defs.storyInfo = VFS.Include(storyPath)
+  for i=1,#defs.storyInfo.scripts do
+    defs.storyInfo.scripts[i] = defs.storyDir .. defs.storyInfo.scripts[i]
+  end
+  local autoloadScripts = VFS.DirList(defs.storyDir .. "scripts", "*.lua", VFS.RAW_FIRST)
+  for i=1,#autoloadScripts do
+    defs.storyInfo.scripts[#defs.storyInfo.scripts + 1] = autoloadScripts[i]
+  end
   data.storyID = storyID
   
-  for _,scriptPath in ipairs(defs.storyInfo.scripts) do
-    local path = defs.storyDir .. scriptPath
+  for _,path in ipairs(defs.storyInfo.scripts) do
     if VFS.FileExists(path, VFS.RAW_FIRST) then
       local loadedScripts = VFS.Include(path)
       for scriptName,data in pairs(loadedScripts) do
