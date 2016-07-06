@@ -417,6 +417,7 @@ local function Cleanup()
   for imageID, image in pairs(data.images) do
     image:Dispose()
   end
+  animations = {}
   --for screenID, screen in pairs(data.subscreens) do
   --  screen:Dispose()
   --end
@@ -1135,7 +1136,7 @@ function widget:Initialize()
     caption = "QUIT",
     width = MENU_BUTTON_WIDTH,
     height = MENU_BUTTON_HEIGHT,
-    OnClick = {function() mainWindow:Hide() end}
+    OnClick = {function() Cleanup(); mainWindow:Hide() end}
   }
   
   local menuChildren
@@ -1216,7 +1217,7 @@ function widget:Initialize()
   background = Image:New{
     parent = mainWindow,
     name = "vn_background",
-    x = 0,
+    x = 4,
     y = 16,
     width = "100%",
     height = "100%",
@@ -1245,6 +1246,7 @@ function widget:Initialize()
     StartStory = StartStory,
     LoadStory = LoadStory,
     CloseStory = CloseStory,
+    Cleanup = Cleanup,
     
     scriptFunctions = scriptFunctions,
   }
