@@ -15,9 +15,14 @@ end
 --------------------------------------------------------------------------------
 local function GetDirectory(filepath) 
     return filepath and filepath:gsub("(.*/)(.*)", "%1") 
-end 
+end
 
-local config = VFS.Include(LUAUI_DIRNAME.."Configs/vn_config.lua")
+assert(debug)
+local source = debug and debug.getinfo(1).source
+local DIR = GetDirectory(source)
+
+local config = VFS.Include(string.sub(DIR, 1, -9) .. "Configs/vn_config.lua")
+config.VN_DIR = string.sub(DIR, 1, -15) .. config.VN_DIR
 
 local Chili
 local Window
@@ -574,7 +579,7 @@ scriptFunctions = {
   end,
   
   Exit = function()
-    widgetHandler:RemoveWidget()
+    mainWindow:Hide()
   end,
   
   JumpScript = function(script)
@@ -1061,10 +1066,10 @@ function widget:Initialize()
     name = "vn_mainWindow",
     caption = "Chili VN",
     --fontSize = 50,
-    x = screen0.width*0.6 - 512,
-    y = screen0.height/2 - 384 - 8,
-    width  = 1024,
-    height = 768 + 16,
+    x = screen0.width*0.5 - WINDOW_WIDTH/2,
+    y = screen0.height/2 - WINDOW_HEIGHT/2 - 8,
+    width  = WINDOW_WIDTH,
+    height = WINDOW_HEIGHT + 16,
     padding = {8, 8, 8, 8};
     --autosize   = true;
     parent = screen0,
@@ -1128,7 +1133,7 @@ function widget:Initialize()
     caption = "QUIT",
     width = MENU_BUTTON_WIDTH,
     height = MENU_BUTTON_HEIGHT,
-    OnClick = {function() widgetHandler:RemoveWidget() end}
+    OnClick = {function() mainWindow:Hide() end}
   }
   
   local menuChildren
@@ -1241,8 +1246,6 @@ function widget:Initialize()
     
     scriptFunctions = scriptFunctions,
   }
-  
-  StartStory("test")
 end
 
 function widget:Shutdown()
