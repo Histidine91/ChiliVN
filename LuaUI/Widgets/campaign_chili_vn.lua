@@ -185,6 +185,7 @@ local function StartScript(scriptName)
   if mainWindow.hidden then
     mainWindow:Show()
   end
+  mainWindow:SetLayer(1)  -- bring to front
   data.currentScript = scriptName
   data.currentLine = 1
   PlayScriptLine(1)
