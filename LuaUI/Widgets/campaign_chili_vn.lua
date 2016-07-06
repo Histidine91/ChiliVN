@@ -182,9 +182,8 @@ local function PlayScriptLine(line)
 end
 
 local function StartScript(scriptName)
-  if mainWindow.parent == nil then
-    screen0:AddChild(mainWindow)
-    mainWindow:SetLayer(1)  -- draw above other UI elements
+  if mainWindow.hidden then
+    mainWindow:Show()
   end
   data.currentScript = scriptName
   data.currentLine = 1
@@ -331,6 +330,7 @@ local function RemoveChoiceDialogPanel()
   if (panelChoiceDialog == nil) then return end
   panelChoiceDialog:Dispose()
   panelChoiceDialog = nil
+  ResetMainLayers()
 end
 
 local function CreateChoiceDialogPanel(choices)
@@ -424,6 +424,7 @@ local function Cleanup()
   SetPortrait(nil)
   textbox:SetText("")
   nameLabel:SetText("")
+  RemoveChoiceDialogPanel()
   
   data.images = {}
   data.subscreens = {}
@@ -447,8 +448,8 @@ local function CloseStory()
     characters = {},
     images = {}
   }
-  if (mainWindow.parent) then
-    screen0:RemoveChild(mainWindow)
+  if (not mainWindow.hidden) then
+    mainWindow:Show()
   end
 end
 
@@ -1030,7 +1031,8 @@ function widget:Update(dt)
   end
   AdvanceAnimations(dt)
   textTime = textTime + dt
-  if textTime > TEXT_INTERVAL then
+  
+  if textTime > TEXT_INTERVAL and not mainWindow.hidden then
     if Spring.GetPressedKeys()[306] then  -- ctrl
       AdvanceScript(true)
     else
@@ -1233,7 +1235,7 @@ function widget:Initialize()
     OnMouseDown = {function(self) return true end},
   }
   
-  screen0:RemoveChild(mainWindow)
+  mainWindow:Hide()
   
   WG.VisualNovel = {
     GetDefs = GetDefs,
