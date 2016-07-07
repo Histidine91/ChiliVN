@@ -8,7 +8,7 @@ function widget:GetInfo()
     date      = "2016.05.20",
     license   = "GNU GPL, v2 or later",
     layer     = 0,
-    enabled   = false,
+    enabled   = true,
   }
 end
 --------------------------------------------------------------------------------
@@ -969,6 +969,7 @@ local function LoadStory(storyID)
   end
   
   defs.storyInfo = VFS.Include(storyPath)
+  defs.storyInfo.scripts = defs.storyInfo.scripts or {}
   for i=1,#defs.storyInfo.scripts do
     defs.storyInfo.scripts[i] = defs.storyDir .. defs.storyInfo.scripts[i]
   end
