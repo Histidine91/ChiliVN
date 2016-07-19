@@ -702,9 +702,9 @@ scriptFunctions = {
 -- Show/hide the menu buttons
 local function ToggleMenu()
   if menuVisible then
-    mainWindow:RemoveChild(menuStack)
+    menuStack:Hide()
   else
-    mainWindow:AddChild(menuStack)
+    menuStack:Show()
   end
   background:SetLayer(99999)
   menuVisible = not menuVisible
@@ -712,23 +712,23 @@ end
 
 local function ToggleUI()
   if uiHidden then
-    mainWindow:AddChild(textPanel)
-    mainWindow:AddChild(menuButton)
+    textPanel:Show()
+    menuButton:Show()
     if menuVisible then
-      mainWindow:AddChild(menuStack)
+      menuStack:Show()
     end
     if panelChoiceDialog ~= nil then
-      mainWindow:AddChild(panelChoiceDialog)
+      panelChoiceDialog:Show()
     end
-    ResetMainLayers(true)
+    --ResetMainLayers(true)
   else
-    mainWindow:RemoveChild(textPanel)
-    mainWindow:RemoveChild(menuButton)
+    textPanel:Hide()
+    menuButton:Hide()
     if menuVisible then
-      mainWindow:RemoveChild(menuStack)
+      menuStack:Hide()
     end
     if panelChoiceDialog ~= nil then
-      mainWindow:RemoveChild(panelChoiceDialog)
+      panelChoiceDialog:Hide()
     end
   end
   uiHidden = not uiHidden
@@ -1167,7 +1167,7 @@ function widget:Initialize()
     padding = {0, 0, 0, 0},
     children = menuChildren,
   }
-  mainWindow:RemoveChild(menuStack)
+  menuStack:Hide()
   
   textPanel = Panel:New {
     parent = mainWindow,
