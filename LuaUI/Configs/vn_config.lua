@@ -26,6 +26,7 @@ local config = {
 local autoAdvanceActions = {
 	"AddBackground",
 	"AddImage",
+	"ClearNVL",
 	"ModifyImage",
 	"RemoveImage",
 	"SetPortrait",
@@ -34,6 +35,7 @@ local autoAdvanceActions = {
 	"PlayMusic",
 	"StopMusic",
 	"ShakeScreen",
+	"SetNVLMode",
 	"SetVars",
 	"UnsetVars",
 	"CustomAction",

@@ -49,7 +49,17 @@ local scripts = {
 	},
 	
 	introEnd = {
-		{"AddText", {speakerID = "narrator", textID = "intro_end", text = "T-T-That's all, folks!"}},
+		{"AddText", {speakerID = "narrator", textID = "intro_end1", text = "Before we go, let's try NVL mode."}},
+		{"SetNVLMode", true},
+		{"AddText", {speakerID = "narrator", textID = "intro_end2", text = "Lalalalala..."}},
+		{"AddText", {speakerID = "eileen", textID = "intro_end3", text = "Okay, this is pretty good."}},
+		{"AddText", {speakerID = "eileen", textID = "intro_end4", text = "What happens if we wipe the slate?"}},
+		{"ClearNVL"},
+		{"AddText", {speakerID = "narrator", textID = "intro_end5", text = "Wowzers!"}},
+		{"AddText", {speakerID = "eileen", textID = "intro_end4", text = "Badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger badger"}},
+		{"ClearNVL"},
+		{"SetNVLMode", false},
+		{"AddText", {speakerID = "narrator", textID = "intro_end6", text = "T-T-That's all, folks!"}},
 		{"Exit"}
 	}
 }

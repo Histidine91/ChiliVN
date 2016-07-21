@@ -39,6 +39,7 @@ local screen0
 local mainWindow
 local textPanel
 local textbox, nameLabel
+local nvlPanel, nvlStack
 local portraitPanel, portrait
 local background
 local menuButton, menuStack
@@ -74,7 +75,8 @@ local waitAction  -- will we actually care what this is?
 -- {[1]} = {target = target, type = type, startX = x, startY = y, endX = x, endY = y, startAlpha = alpha, endAlpha = alpha, time = time, timeElapsed = time ...}}
 -- every Update(dt), increment time by dt and move stuff accordingly
 -- elements are removed from table once timeElapsed >= time
-local animations = {} 
+local animations = {}
+local nvlControls = {}
 
 -- Stuff that is defined in script and should not change during play
 local defs = {
@@ -96,6 +98,8 @@ local data = {
   portraitFile = "",  -- ditto
   currentText = nil, -- the full line (textbox will not contain the full line until text writing has reached the end)
   currentMusic = nil,  -- PlayMusic arg
+  nvlMode = false,
+  nvlText = {},  -- {[1] = <AddText args table>, [2] = ...}
 
   currentScript = nil,
 
@@ -193,18 +197,21 @@ end
 
 -- Text scrolling behaviour, advance to next script line at end if so desired
 local function AdvanceText(time, toEnd)
+  local textControl = data.nvlMode and nvlControls[#nvlControls] and nvlControls[#nvlControls].text or textbox 
+  
   local wantedLength = string.len(data.currentText or "")
-  local currLength = string.len(textbox.text or "")
+  local currLength = string.len(textControl.text or "")
   if currLength < wantedLength then
     if (toEnd) then
-      textbox:SetText(data.currentText)
+      textControl:SetText(data.currentText)
     else
       local charactersToAdd = math.floor(time * options.textSpeed.value + 0.5)
       local newLength = currLength + charactersToAdd
       if newLength > wantedLength then newLength = wantedLength end
       local newText = string.sub(data.currentText, 1, newLength)
-      textbox:SetText(newText)
+      textControl:SetText(newText)
     end
+    textControl:Invalidate()
   else
     if toEnd then
       AdvanceScript(true)
@@ -409,8 +416,122 @@ local function SetPortrait(image)
   portrait:Invalidate()
 end
 
+local function AddNVLTextBox(name, text)
+  local text = TextBox:New {
+    text = text,
+    align = "left",
+    x = 4,
+    y = 28,
+    right = 4,
+    height = 32,
+  }
+  local name = TextBox:New {
+    align = "left",
+    text = name or "",  -- todo i18n
+    x = 4,
+    y = 4,
+    right = 4,
+    height = 20,
+    font    = {
+      size = 16;
+      shadow = true;
+      color = speaker and speaker.color
+    }
+  }
+  local panel = Panel:New {
+    width="100%",
+    backgroundColor = {1, 1, 1, 0},
+    children = {
+      name,
+      text,
+    },
+  }
+  nvlStack:AddChild(panel)
+  text:SetText("")
+  nvlControls[#nvlControls + 1] = {panel = panel, name = name, text = text}
+  return panel, name, text
+end
+
 local function SubstituteVars(str)
   return string.gsub(str, "%{%{(.-)%}%}", function(a) return data.vars[a] or "" end)
+end
+
+local function AddText(args)
+  -- TODO get i18n string
+  local instant = args.instant or options.textSpeed.value <= 0
+  args.text = SubstituteVars(args.text)
+  
+  if (args.append) then
+    args.text = (data.currentText or "") .. args.text
+  end
+  data.currentText = args.text
+  
+  local speaker = {}
+  local speakerName = args.name
+  if (args.speakerID) then
+    speaker = defs.characters[args.speakerID]
+    speakerName = speakerName or speaker.name or ""
+  end
+  
+  local textControl = textbox
+  local label = nameLabel
+  if data.nvlMode then
+    if append then
+      local lastNVLControl = nvlControls[#nvlControls] or AddNVLTextBox(args.name or speaker.name, args.text)
+      label = lastNVLControl.name
+      textControl = lastNVLControl.text
+    else
+      _,label,textControl = AddNVLTextBox(args.name or speaker.name, args.text)
+    end
+  end
+  
+  args.size = args.size or DEFAULT_FONT_SIZE
+  if args.size ~= textControl.font.size then
+    textControl.font.size = args.size
+    --textBox:Invalidate()
+  end
+  
+  if instant then
+    textControl:SetText(args.text)
+  elseif (not args.append) then
+    textControl:SetText("")
+  end
+  
+  if (args.speakerID) then
+    local color = speaker.color
+    --nameLabel:SetCaption(string.char(color[4], color[1], color[2], color[3]).. speaker.name.."\008")
+    label.font.color = color
+    label:SetText(speakerName)
+    if args.setPortrait ~= false then
+      SetPortrait(speaker.portrait)
+    end
+  else
+    --nameLabel:SetCaption("")
+    label:SetText(args.name or "")
+    if args.setPortrait ~= false then
+      SetPortrait(nil)
+    end
+  end
+  label:Invalidate()
+  
+  if not args.noLog then
+    if args.append and #data.textLog > 0 then
+      data.textLog[#data.textLog] = args
+    else
+      data.textLog[#data.textLog + 1] = args
+    end
+  end
+  if data.nvlMode then
+    if args.append and #data.textLog > 0 then
+      data.nvlText[#data.nvlText] = args
+    else
+      data.nvlText[#data.nvlText + 1] = args
+    end
+  end
+  
+  if instant and (args.wait == false) then
+    AdvanceScript()
+  end
 end
 
 -- disposes of existing stuff
@@ -418,6 +539,7 @@ local function Cleanup()
   for imageID, image in pairs(data.images) do
     image:Dispose()
   end
+  scriptFunctions.ClearNVL()
   animations = {}
   --for screenID, screen in pairs(data.subscreens) do
   --  screen:Dispose()
@@ -436,6 +558,7 @@ local function Cleanup()
   data.portraitFile = ""
   data.currentText = nil
   data.currentMusic = nil
+  data.nvlMode = false
   data.currentScript = nil
   data.currentLine = 1
 end
@@ -513,54 +636,16 @@ scriptFunctions = {
   end,
   
   AddText = function(args)
-    -- TODO get i18n string
-    local instant = args.instant or options.textSpeed.value <= 0
-    args.text = SubstituteVars(args.text)
-    
-    if (args.append) then
-      args.text = (data.currentText or "") .. args.text
+    AddText(args)
+  end,
+  
+  ClearNVL = function()
+    for i=1,#nvlControls do
+       local controls = nvlControls[i]
+       controls.panel:Dispose()
     end
-    data.currentText = args.text
-    
-    args.size = args.size or DEFAULT_FONT_SIZE
-    if args.size ~= textbox.font.size then
-      textbox.font.size = args.size
-      --textBox:Invalidate()
-    end
-    
-    if instant then
-      textbox:SetText(args.text)
-    elseif (not args.append) then
-      textbox:SetText("")
-    end
-    
-    if (args.speakerID) then
-      local speaker = defs.characters[args.speakerID]
-      local color = speaker.color
-      --nameLabel:SetCaption(string.char(color[4], color[1], color[2], color[3]).. speaker.name.."\008")
-      nameLabel.font.color = color
-      nameLabel:SetText(args.name or speaker.name)
-      if args.setPortrait ~= false then
-        SetPortrait(speaker.portrait)
-      end
-    else
-      --nameLabel:SetCaption("")
-      nameLabel:SetText(args.name or "")
-      if args.setPortrait ~= false then
-        SetPortrait(nil)
-      end
-    end
-    nameLabel:Invalidate()
-    if not args.noLog then
-      if args.append and #data.textLog > 0 then
-        data.textLog[#data.textLog] = args
-      else
-        data.textLog[#data.textLog + 1] = args
-      end
-    end
-    if instant and (args.wait == false) then
-      AdvanceScript()
-    end
+    nvlControls = {}
+    data.nvlText = {}
   end,
   
   ClearText = function()
@@ -665,6 +750,22 @@ scriptFunctions = {
     SetPortrait(file)
   end,
   
+  SetNVLMode = function(args)
+    local bool = (type(args) == 'boolean' and args) or (type(args) == 'table' and args.mode)
+    if (bool == data.nvlMode and not (type(args) == 'table' and args.force)) then return end
+    data.nvlMode = bool
+    if not uiHidden then
+      if (bool) then
+        textPanel:Hide()
+        nvlPanel:Show()
+      else
+        textPanel:Show()
+        nvlPanel:Hide()
+      end
+      ResetMainLayers()
+    end
+  end,
+  
   SetVars = function(args)
     for i,v in pairs(args) do
       data.vars[i] = v 
@@ -712,7 +813,11 @@ end
 
 local function ToggleUI()
   if uiHidden then
-    textPanel:Show()
+    if data.nvlMode then
+      textPanel:Show()
+    else
+      nvlPanel:Show()
+    end
     menuButton:Show()
     if menuVisible then
       menuStack:Show()
@@ -720,9 +825,12 @@ local function ToggleUI()
     if panelChoiceDialog ~= nil then
       panelChoiceDialog:Show()
     end
-    --ResetMainLayers(true)
   else
-    textPanel:Hide()
+    if data.nvlMode then
+      textPanel:Hide()
+    else
+      nvlPanel:Hide()
+    end
     menuButton:Hide()
     if menuVisible then
       menuStack:Hide()
@@ -731,6 +839,7 @@ local function ToggleUI()
       panelChoiceDialog:Hide()
     end
   end
+  ResetMainLayers(true)
   uiHidden = not uiHidden
 end
 
@@ -918,6 +1027,7 @@ local function LoadGame(filename)
   
   data = VFS.Include(path)
   scriptFunctions.AddBackground({file = data.backgroundFile, wait = true})
+  scriptFunctions.SetNVLMode({mode = data.nvlMode, force = true})
   
   -- readd images from saved data
   data.images = {}
@@ -931,15 +1041,26 @@ local function LoadGame(filename)
   end
   data.imagesSaved = nil
   
-  if data.currentText then
-    local lastText = data.textLog[#data.textLog]
-    if type(lastText) == 'table' then
-      lastText = Spring.Utilities.CopyTable(lastText, true)
-      lastText.noLog = true
-      lastText.append = false
-      lastText.instant = true
-      lastText.wait = true
-      scriptFunctions.AddText(lastText)
+  if data.nvlMode then
+    for i=1,#data.nvlText do
+      local text =  Spring.Utilities.CopyTable(data.nvlText[i], true)
+      text.noLog = true
+      text.append = false
+      text.instant = true
+      text.wait = true
+      scriptFunctions.AddText(text)
+    end
+  else
+    if data.currentText then
+      local lastText = data.textLog[#data.textLog]
+      if type(lastText) == 'table' then
+        lastText = Spring.Utilities.CopyTable(lastText, true)
+        lastText.noLog = true
+        lastText.append = false
+        lastText.instant = true
+        lastText.wait = true
+        scriptFunctions.AddText(lastText)
+      end
     end
   end
   scriptFunctions.PlayMusic({track = data.currentMusic, wait = true})
@@ -1223,6 +1344,27 @@ function widget:Initialize()
       shadow = true;
     },
   }
+  
+  nvlPanel = Panel:New {
+    parent = mainWindow,
+    name = "vn_nvlPanel",
+    width = "100%",
+    height = "80%",
+    x = 0,
+    y = "10%",
+    backgroundColor = {1, 1, 1, 0.3}
+  }
+  nvlStack = StackPanel:New {
+    parent = nvlPanel,
+    name = "vn_nvlStack",
+    orientation = 'vertical',
+    autosize = false,
+    resizeItems = false,
+    centerItems = false,
+    width = "100%",
+    height = "100%",
+  }
+  
   background = Image:New{
     parent = mainWindow,
     name = "vn_background",
@@ -1245,6 +1387,7 @@ function widget:Initialize()
     OnMouseDown = {function(self) return true end},
   }
   
+  nvlPanel:Hide()
   mainWindow:Hide()
   
   WG.VisualNovel = {
@@ -1259,6 +1402,8 @@ function widget:Initialize()
     
     scriptFunctions = scriptFunctions,
   }
+  
+  StartStory("test")
 end
 
 function widget:Shutdown()
