@@ -485,7 +485,7 @@ local function AddNVLTextBox(name, text)
   text:UpdateLayout()
   local panel = Panel:New {
     width="100%",
-    height = 28,
+    height = 32,
     backgroundColor = {1, 1, 1, 0},
     --autosize = true,
     children = {
@@ -602,6 +602,8 @@ local function Cleanup()
   data.vars = {}
   data.textLog = {}
   data.backgroundFile = ""
+  background.file = ""
+  background:Invalidate()
   data.portraitFile = ""
   data.currentText = nil
   data.currentMusic = nil
@@ -1371,6 +1373,7 @@ function widget:Initialize()
     text = "",
     x = (USE_PORTRAIT and PORTRAIT_WIDTH + 8 or 0) + 8,
     y = 4,
+    right = 4,
     font = {
       size = 24;
       shadow = true;
@@ -1450,7 +1453,7 @@ function widget:Initialize()
     scriptFunctions = scriptFunctions,
   }
   
-  StartStory("test")
+  --StartStory("test")
 end
 
 function widget:Shutdown()
