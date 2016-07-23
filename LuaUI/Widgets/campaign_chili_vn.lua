@@ -197,13 +197,21 @@ end
 
 -- Text scrolling behaviour, advance to next script line at end if so desired
 local function AdvanceText(time, toEnd)
-  local textControl = data.nvlMode and nvlControls[#nvlControls] and nvlControls[#nvlControls].text or textbox 
+  local nvlControlsEntry = nvlControls[#nvlControls]
+  local nvl = false
+  local textControl = textbox
+  if data.nvlMode and nvlControlsEntry then
+    textControl = nvlControlsEntry.text
+    nvl = true
+  end
   
   local wantedLength = string.len(data.currentText or "")
   local currLength = string.len(textControl.text or "")
   if currLength < wantedLength then
+    local oldHeight = textControl.height
     if (toEnd) then
       textControl:SetText(data.currentText)
+      textControl:UpdateLayout()
     else
       local charactersToAdd = math.floor(time * options.textSpeed.value + 0.5)
       local newLength = currLength + charactersToAdd
@@ -211,7 +219,18 @@ local function AdvanceText(time, toEnd)
       local newText = string.sub(data.currentText, 1, newLength)
       textControl:SetText(newText)
     end
-    textControl:Invalidate()
+    if nvl then
+      -- force panel size
+      textControl:Invalidate()
+      local panel = nvlControlsEntry.panel
+      local height = textControl.height + panel.padding[2] + panel.padding[4]
+      if (panel.height < height) then
+        panel:Resize(nil, height, true, true)
+        panel:Hide()  -- force refresh
+        panel:Show()
+        --Spring.Echo("force resizing", textControl.height, panel.height)
+      end
+    end
   else
     if toEnd then
       AdvanceScript(true)
@@ -416,21 +435,46 @@ local function SetPortrait(image)
   portrait:Invalidate()
 end
 
+local function SetTextboxHeight(control)
+  local font = control.font
+  local padding = control.padding
+  local width  = control.width - padding[1] - padding[3]
+  local height = control.height - padding[2] - padding[4]
+  
+  control._wrappedText = control.font:WrapText(control.text, width, height)
+  local textHeight,textDescender,numLines = control.font:GetTextHeight(control._wrappedText)
+  textHeight = textHeight-textDescender
+
+  if (control.autoObeyLineHeight) then
+    if (numLines>1) then
+      textHeight = numLines * control.font:GetLineHeight()
+    else
+      --// AscenderHeight = LineHeight w/o such deep chars as 'g','p',...
+      textHeight = math.min( math.max(textHeight, control.font:GetAscenderHeight()), control.font:GetLineHeight())
+    end
+  end
+  control:Resize(nil, textHeight, true, true)
+end
+
 local function AddNVLTextBox(name, text)
   local text = TextBox:New {
     text = text,
     align = "left",
-    x = 4,
-    y = 28,
+    x = NVL_NAME_WIDTH + 4 + 4 + 8,
+    y = 4,
     right = 4,
     height = 32,
+    --autoHeight = false  -- we do the resizing manually later
   }
+  -- set textbox height
+  --SetTextboxHeight(text)
+  
   local name = TextBox:New {
     align = "left",
     text = name or "",  -- todo i18n
     x = 4,
     y = 4,
-    right = 4,
+    width = NVL_NAME_WIDTH,
     height = 20,
     font    = {
       size = 16;
@@ -438,9 +482,12 @@ local function AddNVLTextBox(name, text)
       color = speaker and speaker.color
     }
   }
+  text:UpdateLayout()
   local panel = Panel:New {
     width="100%",
+    height = 28,
     backgroundColor = {1, 1, 1, 0},
+    --autosize = true,
     children = {
       name,
       text,
@@ -814,9 +861,9 @@ end
 local function ToggleUI()
   if uiHidden then
     if data.nvlMode then
-      textPanel:Show()
-    else
       nvlPanel:Show()
+    else
+      textPanel:Show()
     end
     menuButton:Show()
     if menuVisible then
@@ -827,9 +874,9 @@ local function ToggleUI()
     end
   else
     if data.nvlMode then
-      textPanel:Hide()
-    else
       nvlPanel:Hide()
+    else
+      textPanel:Hide()
     end
     menuButton:Hide()
     if menuVisible then
