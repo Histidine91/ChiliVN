@@ -47,6 +47,8 @@ local buttonSave, buttonLoad, buttonLog, buttonQuit
 local logPanel
 local panelChoiceDialog
 
+--//=============================================================================
+
 options_path = 'Settings/HUD Panels/Visual Novel'
 options = {
   textSpeed = {
@@ -300,10 +302,15 @@ local function AdvanceAnimations(dt)
     elseif (anim.type == "shake") then
       ShakeImage(anim, proportion)
     else
+      local dissolve = anim.type == "dissolve" 
       anim.startX = anim.startX or target.x
       anim.startY = anim.startY or target.y
       anim.startColor = anim.startColor or target.color or {1, 1, 1, 1}
       anim.startAlpha = anim.startAlpha or (target.color and target.color[4]) or 1
+      if dissolve then
+        anim.startAlpha2 = anim.startAlpha2 or (target.color and 1 - target.color[4]) or 0
+        target.file2 = target.oldFile
+      end
       if anim.endX then
         target.x = math.floor(anim.endX * proportion + anim.startX * (1 - proportion) + 0.5)
       end
@@ -315,9 +322,19 @@ local function AdvanceAnimations(dt)
         for i=1,4 do
           target.color[i] = anim.endColor[i] * proportion + anim.startColor[i] * (1 - proportion)
         end
+        if (dissolve) then
+          target.color2 = target.color2 or Spring.Utilities.CopyTable(target.color) or {1, 1, 1, 1}
+          for i=1,4 do
+            target.color2[i] = anim.endColor[i] * (1 - proportion) + anim.startColor[i] * proportion
+          end
+        end
       elseif anim.endAlpha then
         target.color = target.color or {1, 1, 1, 1}
         target.color[4] = anim.endAlpha * proportion + anim.startAlpha * (1 - proportion)
+        if dissolve then
+          target.color2 = target.color2 or Spring.Utilities.CopyTable(target.color) or {1, 1, 1, 1}
+          target.color2[4] = anim.endAlpha * (1- proportion) + anim.startAlpha * proportion
+        end
       end
       target:Invalidate()
     end
@@ -329,6 +346,10 @@ local function AdvanceAnimations(dt)
   for i=#toRemove,1,-1 do
     local anim = animations[toRemove[i]]
     local target = anim.image and data.images[anim.image] or background
+    if anim.type == "dissolve" then
+      target.file2 = nil
+      target.color2 = nil
+    end
     table.remove(animations, toRemove[i])
     if (anim.removeTargetOnDone) then
       data.images[target.id] = nil
@@ -733,7 +754,10 @@ scriptFunctions = {
     local imageDef = defs.images[args.defID] and Spring.Utilities.CopyTable(defs.images[args.defID], true) or {anchor = {}}
     args = Spring.Utilities.MergeTable(args, imageDef, false)
     
-    if args.file then image.file = GetFilePath(args.file) end
+    if args.file then
+      image.oldFile = image.file
+      image.file = GetFilePath(args.file)
+    end
     if args.height then image.height = args.height end
     if args.width then image.width = args.width end
     
@@ -1251,7 +1275,7 @@ function widget:Initialize()
     x = screen0.width*0.5 - WINDOW_WIDTH/2,
     y = screen0.height/2 - WINDOW_HEIGHT/2 - 8,
     width  = WINDOW_WIDTH,
-    height = WINDOW_HEIGHT + 16,
+    height = WINDOW_HEIGHT + 24,
     padding = {8, 8, 8, 8};
     --autosize   = true;
     parent = screen0,
@@ -1419,7 +1443,7 @@ function widget:Initialize()
     parent = mainWindow,
     name = "vn_background",
     x = 4,
-    y = 16,
+    y = 24,
     width = "100%",
     height = "100%",
         OnClick = {function(self, x, y, mouse)
@@ -1453,7 +1477,7 @@ function widget:Initialize()
     scriptFunctions = scriptFunctions,
   }
   
-  --StartStory("test")
+  StartStory("test")
 end
 
 function widget:Shutdown()
