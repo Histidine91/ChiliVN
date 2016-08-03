@@ -41,7 +41,7 @@ local textPanel
 local textbox, nameLabel
 local nvlPanel, nvlStack
 local portraitPanel, portrait
-local background
+local background, backgroundBlack
 local menuButton, menuStack
 local buttonSave, buttonLoad, buttonLog, buttonQuit
 local logPanel
@@ -147,7 +147,7 @@ local function ResetMainLayers(force)
     menuStack:SetLayer(3)
   end
   ]]--
-  background:SetLayer(99)
+  backgroundBlack:SetLayer(99)
 end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -880,7 +880,7 @@ local function ToggleMenu()
   else
     menuStack:Show()
   end
-  background:SetLayer(99999)
+  ResetMainLayers()
   menuVisible = not menuVisible
 end
 
@@ -1439,14 +1439,17 @@ function widget:Initialize()
     height = "100%",
   }
   
-  background = Image:New{
+  backgroundBlack = Image:New{
     parent = mainWindow,
-    name = "vn_background",
-    x = 4,
+    name = "vn_background_black",
+    x = 0,
     y = 24,
-    width = "100%",
-    height = "100%",
-        OnClick = {function(self, x, y, mouse)
+    right = 0,
+    bottom = 0,
+    keepAspect = false,
+    itemMargin = {0, 0, 0, 0},
+    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png",
+    OnClick = {function(self, x, y, mouse)
         if mouse == 1 then
           if not uiHidden then
             AdvanceText(0, true)
@@ -1459,6 +1462,17 @@ function widget:Initialize()
       end
     },
     OnMouseDown = {function(self) return true end},
+  }  
+  
+  background = Image:New{
+    parent = backgroundBlack,
+    name = "vn_background",
+    x = 0,
+    y = 0,
+    right = 0,
+    bottom = 0,
+    padding = {0, 0, 0, 0},
+    itemMargin = {0, 0, 0, 0},
   }
   
   nvlPanel:Hide()
