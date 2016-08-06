@@ -130,7 +130,7 @@ local function SplitString(str, sep)
   return fields
 end
 
-local function MakePath(entries)
+local function MakePath(entries, endSlash)
   local toBuild = {}
   for i=1,#entries do
     local entry = entries[i]
@@ -144,7 +144,9 @@ local function MakePath(entries)
       end
     end
   end
-  return table.concat(toBuild, "/")
+  local ret = table.concat(toBuild, "/")
+  if endSlash then ret = ret .. "/" end
+  return ret
 end
 
 -- support for parent directory syntax
@@ -200,6 +202,15 @@ local function PlayScriptLine(line)
       waitTime = waitTime or options.waitTime.value
     end
     
+    if not data.nvlMode then
+      if not waitTime then
+        textPanel:Show()
+        ResetMainLayers()
+      else
+        textPanel:Hide()
+      end
+    end
+    
   elseif line > #defs.scripts[data.currentScript] then
     Spring.Log(widget:GetInfo().name, LOG.WARNING, "Reached end of script " .. data.currentScript)
   end
@@ -209,7 +220,7 @@ local function StartScript(scriptName)
   if mainWindow.hidden then
     mainWindow:Show()
   end
-  mainWindow:SetLayer(1)  -- bring to front
+  ResetMainLayers()
   data.currentScript = scriptName
   data.currentLine = 1
   PlayScriptLine(1)
@@ -289,8 +300,13 @@ local function ShakeImage(anim, proportion)
   local strengthY = anim.strengthY or 24
   
   -- invert direction each frame
-  local newOffsetX = math.random(1, strengthX) * ((anim.offsetX > 1) and -1 or 1)
-  local newOffsetY = math.random(1, strengthY) * ((anim.offsetY > 1) and -1 or 1)
+  local newOffsetX, newOffsetY = 0, 0
+  if strengthX > 0 then
+    newOffsetX = math.random(1, strengthX) * ((anim.offsetX > 1) and -1 or 1)
+  end
+  if strengthY > 0 then
+    newOffsetY = math.random(1, strengthY) * ((anim.offsetY > 1) and -1 or 1)
+  end
   newOffsetX = math.floor(newOffsetX * (1 - proportion) + 0.5)
   newOffsetY = math.floor(newOffsetY * (1 - proportion) + 0.5)
   anim.offsetX = newOffsetX
@@ -1173,10 +1189,10 @@ local function LoadStory(storyID, dir)
     CloseStory()
   end
   
-  defs.storyDir = (dir or config.VN_DIR) .. storyID .. "/"
+  defs.storyDir = MakePath({dir or config.VN_DIR, storyID}, true)
   local storyPath = defs.storyDir .. "story_info.lua"
   if not VFS.FileExists(storyPath, VFS.RAW_FIRST) then
-    Spring.Log(widget:GetInfo().name, LOG.ERROR, "VN story " .. storyID .. " does not exist")
+    Spring.Log(widget:GetInfo().name, LOG.ERROR, "VN story " .. storyPath .. " does not exist")
     return
   end
   
@@ -1491,6 +1507,7 @@ function widget:Initialize()
     bottom = 0,
     padding = {0, 0, 0, 0},
     itemMargin = {0, 0, 0, 0},
+    keepAspect = false,
   }
   
   nvlPanel:Hide()
