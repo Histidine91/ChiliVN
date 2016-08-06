@@ -123,19 +123,37 @@ local function CountElements(tbl)
   return num
 end
 
--- hax for parent directory syntax
+local function SplitString(str, sep)
+  local sep, fields = sep or ":", {}
+  local pattern = string.format("([^%s]+)", sep)
+  string.gsub(str, pattern, function(c) fields[#fields+1] = c end)
+  return fields
+end
+
+local function MakePath(entries)
+  local toBuild = {}
+  for i=1,#entries do
+    local entry = entries[i]
+    local items = SplitString(entry, "/")
+    for j=1,#items do
+      local item = items[j]
+      if item == ".." then
+        toBuild[#toBuild] = nil
+      else
+        toBuild[#toBuild + 1] = item
+      end
+    end
+  end
+  return table.concat(toBuild, "/")
+end
+
+-- support for parent directory syntax
 local function GetFilePath(givenPath)
   if givenPath == nil then
     return ""
   end
-  
-  if string.find(givenPath, "../../", 1, true) == 1 then
-    return string.sub(givenPath, 7)
-  elseif string.find(givenPath, "../", 1, true) == 1 then
-    return config.VN_DIR .. string.sub(givenPath, 4)
-  else
-    return defs.storyDir .. givenPath
-  end
+
+  return MakePath({defs.storyDir, givenPath})
 end
 
 -- This forces the background to the back after toggling GUI (so bg doesn't draw in front of UI elements)
