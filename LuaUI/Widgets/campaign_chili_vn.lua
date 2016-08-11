@@ -354,26 +354,28 @@ local function AdvanceAnimations(dt)
       if anim.endColor then
         target.color = target.color or {1, 1, 1, 1}
         for i=1,4 do
-          target.color[i] = anim.endColor[i] * proportion + anim.startColor[i] * (1 - proportion)
+          target.color[i] = anim.endColor[i] * math.sin(proportion * math.pi * 0.5) + anim.startColor[i] * math.cos(proportion * math.pi * 0.5)
         end
         if (dissolve) then
           target.color2 = target.color2 or Spring.Utilities.CopyTable(target.color) or {1, 1, 1, 1}
           for i=1,4 do
-            target.color2[i] = anim.endColor[i] * (1 - proportion) + anim.startColor[i] * proportion
+            target.color2[i] = anim.endColor[i] * math.cos(proportion * math.pi * 0.5) + anim.startColor[i] * math.sin(proportion * math.pi * 0.5)
           end
         end
       elseif anim.endAlpha then
         target.color = target.color or {1, 1, 1, 1}
-        target.color[4] = anim.endAlpha * proportion + anim.startAlpha * (1 - proportion)
+        target.color[4] = anim.endAlpha * math.sin(proportion * math.pi * 0.5) + anim.startAlpha * math.cos(proportion * math.pi * 0.5)
         if dissolve then
           target.color2 = target.color2 or Spring.Utilities.CopyTable(target.color) or {1, 1, 1, 1}
-          target.color2[4] = anim.endAlpha * (1- proportion) + anim.startAlpha * proportion
+          target.color2[4] = anim.endAlpha * math.cos(proportion * math.pi * 0.5) + anim.startAlpha * math.sin(proportion * math.pi * 0.5)
         end
       end
       target:Invalidate()
     end
     
     if done then
+      target.color = anim.endColor or target.color
+      target.color[4] = anim.endAlpha or target.color[4]
       toRemove[#toRemove+1] = i
     end
   end
