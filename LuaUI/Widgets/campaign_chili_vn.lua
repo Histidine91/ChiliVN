@@ -202,7 +202,7 @@ local function PlayScriptLine(line)
       waitTime = waitTime or options.waitTime.value
     end
     
-    -- automatically show/hide text box if stuff is going on and no text is visible
+    -- automatically hide text box while in wait mode, show otherwise
     if not data.nvlMode then
       if (action == 'AddText' or (not waitTime)) and textPanel.hidden then
         textPanel:Show()
