@@ -204,10 +204,10 @@ local function PlayScriptLine(line)
     
     -- automatically show/hide text box if stuff is going on and no text is visible
     if not data.nvlMode then
-      if (not waitTime) and textPanel.hidden then
+      if (action == 'AddText' or (not waitTime)) and textPanel.hidden then
         textPanel:Show()
         ResetMainLayers()
-      elseif not textPanel.hidden and (data.currentText == nil) then
+      elseif not textPanel.hidden and (type(waitTime) == 'number' and (waitTime > 0)) then
         textPanel:Hide()
       end
     end
