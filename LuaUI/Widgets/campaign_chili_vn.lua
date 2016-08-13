@@ -1321,7 +1321,7 @@ function widget:Initialize()
     x = screen0.width*0.5 - WINDOW_WIDTH/2,
     y = screen0.height/2 - WINDOW_HEIGHT/2 - 8,
     width  = WINDOW_WIDTH,
-    height = WINDOW_HEIGHT + 24,
+    height = WINDOW_HEIGHT + 32,
     padding = {8, 8, 8, 8};
     --autosize   = true;
     parent = screen0,
@@ -1491,7 +1491,7 @@ function widget:Initialize()
     x = 0,
     y = 24,
     right = 0,
-    bottom = 0,
+    height = WINDOW_HEIGHT,
     keepAspect = false,
     itemMargin = {0, 0, 0, 0},
     file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png",
