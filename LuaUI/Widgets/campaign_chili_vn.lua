@@ -463,6 +463,14 @@ local function AddAnimation(args, image)
   local anim = args.animation
   anim.image = args.id
   image.color = args.startColor or image.color or {1, 1, 1, 1}
+  
+  if anim.type == "dissolve" and (not anim.startColor) then
+    anim.startAlpha = anim.startAlpha or 0
+  end
+  if anim.type == "dissolve" and (not anim.endColor) then
+    anim.endAlpha = anim.endAlpha or 1
+  end
+  
   image.color[4] = anim.startAlpha or 1
   
   anim.startX = anim.startX or args.x
@@ -692,6 +700,7 @@ scriptFunctions = {
   AddBackground = function(args)
     local argsType = type(args)
     local image = (argsType == 'string' and args) or (argsType == 'table' and args.file)
+    background.oldFile = background.file
     background.file = GetFilePath(image)
     data.backgroundFile = image
     if (argsType == 'table' and args.animation) then
