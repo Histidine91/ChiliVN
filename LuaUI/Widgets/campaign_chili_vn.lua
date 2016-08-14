@@ -199,7 +199,7 @@ local function PlayScriptLine(line)
       AdvanceScript(false)
     end
     if (action ~= "AddText" and type(args) == 'table' and args.wait) then
-      waitTime = waitTime or options.waitTime.value
+      waitTime = args.wait or options.waitTime.value
     end
     
     -- automatically hide text box while in wait mode, show otherwise
@@ -645,6 +645,68 @@ local function AddText(args)
   end
 end
 
+local function AddImage(args, isText)
+  if not args.id then
+    Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempting to add image with nil id")
+    return
+  end
+  local image = data.images[args.id]
+  if image then
+    Spring.Log(widget:GetInfo().name, LOG.WARNING, "Image " .. args.id .. " already exists, modifying instead")
+    return scriptFunctions.ModifyImage(args)
+  end
+  
+  local imageDef = defs.images[args.defID] and Spring.Utilities.CopyTable(defs.images[args.defID], true) or {}
+  args = Spring.Utilities.MergeTable(args, imageDef, false)
+  
+  args.x = args.x or 0
+  args.y = args.y or 0
+  args.anchor = args.anchor or {0, 0}
+  
+  if isText then
+    image = Label:New {
+      id = args.id,
+      parent = background,
+      caption = args.text,
+      height = args.height,
+      width = args.width,
+      font = {size = args.size or DEFAULT_FONT_SIZE, color = args.color, shadow = args.shadow}
+    }
+  else
+    image = Image:New{
+      id = args.id,
+      parent = background,
+      file = GetFilePath(args.file),
+      height = args.height,
+      width = args.width,
+    }
+  end
+  
+  if (type(args.x) == 'string') then
+    args.x = image.parent.width * tonumber(args.x)
+  end
+  if (type(args.y) == 'string') then
+    args.y = image.parent.height * tonumber(args.y)
+  end
+  image.x = args.x - args.anchor[1]
+  image.y = args.y - args.anchor[2]
+  image.anchor = args.anchor
+  
+  if (args.animation) then
+    AddAnimation(args, image)
+  end
+  
+  data.images[args.id] = image
+  if (args.layer) then
+    image:SetLayer(layer)
+    image.layer = args.layer
+  else
+    image.layer = CountElements(data.images)
+  end
+  
+  image:Invalidate()
+end
+
 -- disposes of existing stuff
 local function Cleanup()
   for imageID, image in pairs(data.images) do
@@ -708,49 +770,15 @@ scriptFunctions = {
   end,
   
   AddImage = function(args)
-    local image = data.images[args.id]
-    if image then
-      Spring.Log(widget:GetInfo().name, LOG.WARNING, "Image " .. args.id .. " already exists, modifying instead")
-      return scriptFunctions.ModifyImage(args)
-    end
-    
-    local imageDef = defs.images[args.defID] and Spring.Utilities.CopyTable(defs.images[args.defID], true) or {anchor = {}}
-    args = Spring.Utilities.MergeTable(args, imageDef, false)
-    
-    local image = Image:New{
-      id = args.id,
-      parent = background,
-      file = GetFilePath(args.file),
-      height = args.height,
-      width = args.width,
-    }
-    if (type(args.x) == 'string') then
-      args.x = image.parent.width * tonumber(args.x)
-    end
-    if (type(args.y) == 'string') then
-      args.y = image.parent.height * tonumber(args.y)
-    end
-    image.x = args.x - args.anchor[1]
-    image.y = args.y - args.anchor[2]
-    image.anchor = args.anchor or {}
-    
-    if (args.animation) then
-      AddAnimation(args, image)
-    end
-    
-    data.images[args.id] = image
-    if (args.layer) then
-      image:SetLayer(layer)
-      image.layer = args.layer
-    else
-      image.layer = CountElements(data.images)
-    end
-    
-    image:Invalidate()
+    AddImage(args, false)
   end,
   
   AddText = function(args)
     AddText(args)
+  end,
+  
+  AddTextAsImage = function(args)
+    AddImage(args, true)
   end,
   
   ClearNVL = function()
