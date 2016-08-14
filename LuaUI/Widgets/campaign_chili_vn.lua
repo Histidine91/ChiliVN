@@ -535,9 +535,9 @@ local function AddNVLTextBox(name, text)
   -- set textbox height
   --SetTextboxHeight(text)
   
-  local name = TextBox:New {
+  local name = Label:New {
     align = "left",
-    text = name or "",  -- todo i18n
+    caption = name or "",  -- todo i18n
     x = 4,
     y = 4,
     width = NVL_NAME_WIDTH,
@@ -612,15 +612,13 @@ local function AddText(args)
   
   if (args.speakerID) then
     local color = speaker.color
-    --nameLabel:SetCaption(string.char(color[4], color[1], color[2], color[3]).. speaker.name.."\008")
     label.font.color = color
-    label:SetText(speakerName)
+    label:SetCaption(speakerName)
     if args.setPortrait ~= false then
       SetPortrait(speaker.portrait)
     end
   else
-    --nameLabel:SetCaption("")
-    label:SetText(args.name or "")
+    label:SetCaption(args.name or "")
     if args.setPortrait ~= false then
       SetPortrait(nil)
     end
@@ -660,7 +658,7 @@ local function Cleanup()
   scriptFunctions.StopMusic()
   SetPortrait(nil)
   textbox:SetText("")
-  nameLabel:SetText("")
+  nameLabel:SetCaption("")
   RemoveChoiceDialogPanel()
   
   data.images = {}
@@ -765,7 +763,7 @@ scriptFunctions = {
   end,
   
   ClearText = function()
-    nameLabel:SetText("")
+    nameLabel:SetCaption("")
     nameLabel:Invalidate()
     textbox:SetText("")
     data.currentText = nil
@@ -1046,9 +1044,9 @@ local function CreateLogPanel()
       height = LOG_PANEL_HEIGHT,
       y = (LOG_PANEL_HEIGHT + 4)*(count-1),
       children = {
-        TextBox:New {
+        Label:New {
           align = "left",
-          text = entry.name or (speaker and speaker.name) or "",  -- todo i18n
+          caption = entry.name or (speaker and speaker.name) or "",  -- todo i18n
           x = 4,
           y = 4,
           right = 4,
@@ -1437,10 +1435,10 @@ function widget:Initialize()
     }
   end
   
-  nameLabel = TextBox:New{
+  nameLabel = Label:New{
     parent = textPanel,
     name = "vn_nameLabel",
-    text = "",
+    caption = "",
     x = (USE_PORTRAIT and PORTRAIT_WIDTH + 8 or 0) + 8,
     y = 4,
     right = 4,
