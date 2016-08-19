@@ -324,6 +324,8 @@ local function AdvanceAnimations(dt)
     local anim = animations[i]
     local done = false
     local target = anim.image and data.images[anim.image] or background
+    local color, color2
+    
     anim.timeElapsed = (anim.timeElapsed or 0) + dt
     if anim.timeElapsed >= anim.time then
       anim.timeElapsed = anim.time
@@ -337,7 +339,20 @@ local function AdvanceAnimations(dt)
     elseif (anim.type == "shake") then
       ShakeImage(anim, proportion)
     else
-      local dissolve = anim.type == "dissolve" 
+      if (target.classname == "label") or (target.classname == "textbox") then
+        target.font.color = target.font.color or {1,1,1,1}
+        target.font.color2 = target.font.color2 or Spring.Utilities.CopyTable(target.font.color) or {1, 1, 1, 1}
+        color = target.font.color
+        color2 = target.font.color2
+      else
+        target.color = target.color or {1,1,1,1}
+        target.color2 = target.color2 or Spring.Utilities.CopyTable(target.color) or {1,1,1,1}
+        color = target.color
+        color2 = target.color2
+      end
+      
+      local dissolve = anim.type == "dissolve"
+      
       anim.startX = anim.startX or target.x
       anim.startY = anim.startY or target.y
       anim.startColor = anim.startColor or target.color or {1, 1, 1, 1}
@@ -353,30 +368,32 @@ local function AdvanceAnimations(dt)
         target.y = math.floor(anim.endY * proportion + anim.startY * (1 - proportion) + 0.5)
       end
       if anim.endColor then
-        target.color = target.color or {1, 1, 1, 1}
         for i=1,4 do
-          target.color[i] = anim.endColor[i] * math.sin(proportion * math.pi * 0.5) + anim.startColor[i] * math.cos(proportion * math.pi * 0.5)
+          color[i] = anim.endColor[i] * math.sin(proportion * math.pi * 0.5) + anim.startColor[i] * math.cos(proportion * math.pi * 0.5)
         end
         if (dissolve) then
-          target.color2 = target.color2 or Spring.Utilities.CopyTable(target.color) or {1, 1, 1, 1}
           for i=1,4 do
-            target.color2[i] = anim.endColor[i] * math.cos(proportion * math.pi * 0.5) + anim.startColor[i] * math.sin(proportion * math.pi * 0.5)
+            color2[i] = anim.endColor[i] * math.cos(proportion * math.pi * 0.5) + anim.startColor[i] * math.sin(proportion * math.pi * 0.5)
           end
         end
       elseif anim.endAlpha then
-        target.color = target.color or {1, 1, 1, 1}
-        target.color[4] = anim.endAlpha * math.sin(proportion * math.pi * 0.5) + anim.startAlpha * math.cos(proportion * math.pi * 0.5)
+        color[4] = anim.endAlpha * math.sin(proportion * math.pi * 0.5) + anim.startAlpha * math.cos(proportion * math.pi * 0.5)
         if dissolve then
-          target.color2 = target.color2 or Spring.Utilities.CopyTable(target.color) or {1, 1, 1, 1}
-          target.color2[4] = anim.endAlpha * math.cos(proportion * math.pi * 0.5) + anim.startAlpha * math.sin(proportion * math.pi * 0.5)
+          color2[4] = anim.endAlpha * math.cos(proportion * math.pi * 0.5) + anim.startAlpha * math.sin(proportion * math.pi * 0.5)
         end
       end
       target:Invalidate()
     end
     
     if done then
-      target.color = anim.endColor or target.color
-      target.color[4] = anim.endAlpha or target.color[4]
+      if color then
+        if anim.endColor then
+          for i=1,4 do
+            color[i] = anim.endColor[i] 
+          end
+        end
+        color[4] = anim.endAlpha or color[4]
+      end
       toRemove[#toRemove+1] = i
     end
   end
