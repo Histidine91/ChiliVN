@@ -1604,7 +1604,7 @@ function widget:Initialize()
 end
 
 function widget:Shutdown()
-  CloseStory()
+  --CloseStory()
   WG.VisualNovel = nil
 end
 --------------------------------------------------------------------------------
