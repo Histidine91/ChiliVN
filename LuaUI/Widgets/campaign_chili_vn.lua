@@ -227,6 +227,18 @@ local function StartScript(scriptName)
   PlayScriptLine(1)
 end
 
+local function ResizeNVLEntryPanel(textControl, nvlControlsEntry)
+    textControl:Invalidate()
+    local panel = nvlControlsEntry.panel
+    local height = textControl.height + panel.padding[2] + panel.padding[4]
+    if (panel.height < height) then
+      panel:Resize(nil, height, true, true)
+      panel:Hide()  -- force refresh
+      panel:Show()
+      --Spring.Echo("force resizing", textControl.height, panel.height)
+    end
+end
+
 -- Text scrolling behaviour, advance to next script line at end if so desired
 local function AdvanceText(time, toEnd)
   local nvlControlsEntry = nvlControls[#nvlControls]
@@ -252,16 +264,7 @@ local function AdvanceText(time, toEnd)
       textControl:SetText(newText)
     end
     if nvl then
-      -- force panel size
-      textControl:Invalidate()
-      local panel = nvlControlsEntry.panel
-      local height = textControl.height + panel.padding[2] + panel.padding[4]
-      if (panel.height < height) then
-        panel:Resize(nil, height, true, true)
-        panel:Hide()  -- force refresh
-        panel:Show()
-        --Spring.Echo("force resizing", textControl.height, panel.height)
-      end
+      ResizeNVLEntryPanel(textControl, nvlControlsEntry)
     end
   else
     if toEnd then
@@ -518,68 +521,79 @@ local function SetPortrait(image)
   portrait:Invalidate()
 end
 
-local function SetTextboxHeight(control)
-  local font = control.font
-  local padding = control.padding
-  local width  = control.width - padding[1] - padding[3]
-  local height = control.height - padding[2] - padding[4]
-  
-  control._wrappedText = control.font:WrapText(control.text, width, height)
-  local textHeight,textDescender,numLines = control.font:GetTextHeight(control._wrappedText)
-  textHeight = textHeight-textDescender
+local function AddNVLTextBox(name, text, size, instant)
+  local panel = Panel:New {
+    parent = nvlStack,
+    width="100%",
+    height = 36,
+    backgroundColor = {1, 1, 1, 0},
+    --autosize = instant,
+  }
 
-  if (control.autoObeyLineHeight) then
-    if (numLines>1) then
-      textHeight = numLines * control.font:GetLineHeight()
-    else
-      --// AscenderHeight = LineHeight w/o such deep chars as 'g','p',...
-      textHeight = math.min( math.max(textHeight, control.font:GetAscenderHeight()), control.font:GetLineHeight())
-    end
-  end
-  control:Resize(nil, textHeight, true, true)
-end
-
-local function AddNVLTextBox(name, text)
-  local text = TextBox:New {
+  local textBox = TextBox:New {
+    parent = panel,
     text = text,
     align = "left",
     x = NVL_NAME_WIDTH + 4 + 4 + 8,
     y = 4,
     right = 4,
     height = 32,
-    --autoHeight = false  -- we do the resizing manually later
+    font    = {
+      size = size
+    }
   }
-  -- set textbox height
-  --SetTextboxHeight(text)
   
   local name = Label:New {
+    parent = panel,
     align = "left",
     caption = name or "",  -- todo i18n
     x = 4,
     y = 4,
     width = NVL_NAME_WIDTH,
-    height = 20,
+    height = 32,
     font    = {
-      size = 16;
+      size = DEFAULT_FONT_SIZE;
       shadow = true;
       color = speaker and speaker.color
     }
   }
-  text:UpdateLayout()
-  local panel = Panel:New {
-    width="100%",
-    height = 32,
-    backgroundColor = {1, 1, 1, 0},
-    --autosize = true,
-    children = {
-      name,
-      text,
-    },
-  }
-  nvlStack:AddChild(panel)
-  text:SetText("")
-  nvlControls[#nvlControls + 1] = {panel = panel, name = name, text = text}
-  return panel, name, text
+  
+  --textBox:UpdateLayout()
+  
+  -- hax to fix panel height
+  if instant then
+    local font = textBox.font
+    local padding = textBox.padding
+    local width  = textBox.width - padding[1] - padding[3]
+    local height = textBox.height - padding[2] - padding[4]
+    if textBox.autoHeight then
+      height = 1e9
+    end
+    local wrappedText = font:WrapText(textBox.text, width, height)
+    local textHeight,textDescender,numLines = font:GetTextHeight(wrappedText)
+    textHeight = textHeight-textDescender
+
+    if (numLines>1) then
+      textHeight = numLines * font:GetLineHeight()
+    else
+      --// AscenderHeight = LineHeight w/o such deep chars as 'g','p',...
+      textHeight = math.min( math.max(textHeight, font:GetAscenderHeight()), font:GetLineHeight())
+    end
+    local panelHeight = math.max(textHeight + 12, 32)
+    panel.height = panelHeight
+    panel:Invalidate()
+  end
+  
+  --nvlStack:AddChild(panel)
+  nvlControls[#nvlControls + 1] = {panel = panel, name = name, text = textBox}
+  
+  if not instant then
+    textBox:SetText("")
+  else
+    --ResizeNVLEntryPanel(textBox, nvlControls[#nvlControls])
+  end
+  
+  return panel, name, textBox
 end
 
 local function SubstituteVars(str)
@@ -589,6 +603,9 @@ end
 local function AddText(args)
   -- TODO get i18n string
   local instant = args.instant or options.textSpeed.value <= 0
+  if Spring.GetPressedKeys()[306] then  -- ctrl
+    instant = true
+  end
   args.text = SubstituteVars(args.text)
   
   if (args.append) then
@@ -603,19 +620,20 @@ local function AddText(args)
     speakerName = speakerName or speaker.name or ""
   end
   
+  args.size = args.size or DEFAULT_FONT_SIZE
+  
   local textControl = textbox
   local label = nameLabel
   if data.nvlMode then
     if append then
-      local lastNVLControl = nvlControls[#nvlControls] or AddNVLTextBox(args.name or speaker.name, args.text)
+      local lastNVLControl = nvlControls[#nvlControls] or AddNVLTextBox(args.name or speaker.name, args.text, args.size, instant)
       label = lastNVLControl.name
       textControl = lastNVLControl.text
     else
-      _,label,textControl = AddNVLTextBox(args.name or speaker.name, args.text)
+      _,label,textControl = AddNVLTextBox(args.name or speaker.name, args.text, args.size, instant)
     end
   end
   
-  args.size = args.size or DEFAULT_FONT_SIZE
   if args.size ~= textControl.font.size then
     textControl.font.size = args.size
     --textBox:Invalidate()
@@ -766,7 +784,7 @@ local function CloseStory()
     images = {}
   }
   if (not mainWindow.hidden) then
-    mainWindow:Show()
+    mainWindow:Hide()
   end
 end
 
@@ -1585,6 +1603,7 @@ function widget:Initialize()
 end
 
 function widget:Shutdown()
+  CloseStory()
   WG.VisualNovel = nil
 end
 --------------------------------------------------------------------------------
