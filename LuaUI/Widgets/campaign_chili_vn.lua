@@ -748,6 +748,9 @@ local function Cleanup()
   for imageID, image in pairs(data.images) do
     image:Dispose()
   end
+  if nvlPanel.visible and nvlPanel.parent then
+    nvlPanel:Hide()
+  end
   scriptFunctions.ClearNVL()
   animations = {}
   --for screenID, screen in pairs(data.subscreens) do
