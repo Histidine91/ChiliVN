@@ -1442,7 +1442,7 @@ function widget:Initialize()
     caption = "OPT",
     width = MENU_BUTTON_WIDTH,
     height = MENU_BUTTON_HEIGHT,
-    OnClick = {function() WG.crude.OpenPath(options_path); WG.crude.ShowMenu(); end}
+    OnClick = {function() if WG.crude then WG.crude.OpenPath(options_path); WG.crude.ShowMenu(); end end}
   }
   
   buttonQuit = Button:New{
