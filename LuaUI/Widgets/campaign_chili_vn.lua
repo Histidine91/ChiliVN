@@ -705,6 +705,7 @@ local function AddImage(args, isText)
       caption = args.text,
       height = args.height,
       width = args.width,
+      align = args.align,
       font = {size = args.size or DEFAULT_FONT_SIZE, color = args.color, shadow = args.shadow}
     }
   else
