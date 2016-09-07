@@ -47,6 +47,7 @@ local buttonSave, buttonLoad, buttonLog, buttonQuit
 local logPanel
 local panelChoiceDialog
 
+local timer = Spring.GetTimer()
 --//=============================================================================
 
 options_path = 'Settings/HUD Panels/Visual Novel'
@@ -187,31 +188,34 @@ local function PlayScriptLine(line)
   line = line or data.currentLine
   local item = defs.scripts[data.currentScript][line]
   if item then
-    local action = item[1]
-    local args = item[2]
-    if (type(args) == 'table') then
-      args = Spring.Utilities.CopyTable(item[2], true)
-    elseif args == nil then
-      args = {}
-    end
-    scriptFunctions[action](args)
-    if config.autoAdvanceActions[action] and (type(args) ~= 'table' or (not args.wait)) then
-      AdvanceScript(false)
-    end
-    if (action ~= "AddText" and type(args) == 'table' and args.wait) then
-      waitTime = args.wait or options.waitTime.value
-    end
-    
-    -- automatically hide text box while in wait mode, show otherwise
-    if not data.nvlMode then
-      if (action == 'AddText' or (not waitTime)) and textPanel.hidden then
-        textPanel:Show()
-        ResetMainLayers()
-      elseif not textPanel.hidden and (type(waitTime) == 'number' and (waitTime > 0)) then
-        textPanel:Hide()
+    if type(item) == 'function' then
+      item()
+    else
+      local action = item[1]
+      local args = item[2]
+      if (type(args) == 'table') then
+        args = Spring.Utilities.CopyTable(item[2], true)
+      elseif args == nil then
+        args = {}
+      end
+      scriptFunctions[action](args)
+      if config.autoAdvanceActions[action] and (type(args) ~= 'table' or (not args.wait)) then
+        AdvanceScript(false)
+      end
+      if (action ~= "AddText" and type(args) == 'table' and args.wait) then
+        waitTime = args.wait or options.waitTime.value
+      end
+      
+      -- automatically hide text box while in wait mode, show otherwise
+      if not data.nvlMode then
+        if (action == 'AddText' or (not waitTime)) and textPanel.hidden then
+          textPanel:Show()
+          ResetMainLayers()
+        elseif not textPanel.hidden and (type(waitTime) == 'number' and (waitTime > 0)) then
+          textPanel:Hide()
+        end
       end
     end
-    
   elseif line > #defs.scripts[data.currentScript] then
     Spring.Log(widget:GetInfo().name, LOG.WARNING, "Reached end of script " .. data.currentScript)
   end
@@ -358,6 +362,8 @@ local function AdvanceAnimations(dt)
       
       anim.startX = anim.startX or target.x
       anim.startY = anim.startY or target.y
+      anim.startWidth = anim.startWidth or target.width
+      anim.startHeight = anim.startHeight or target.height
       anim.startColor = anim.startColor or target.color or {1, 1, 1, 1}
       anim.startAlpha = anim.startAlpha or (target.color and target.color[4]) or 1
       if dissolve then
@@ -370,6 +376,13 @@ local function AdvanceAnimations(dt)
       if anim.endY then
         target.y = math.floor(anim.endY * proportion + anim.startY * (1 - proportion) + 0.5)
       end
+      if anim.endWidth then
+        target.width = math.floor(anim.endWidth * proportion + anim.startWidth * (1 - proportion) + 0.5)
+      end
+      if anim.endHeight then
+        target.height = math.floor(anim.endHeight * proportion + anim.startHeight * (1 - proportion) + 0.5)
+      end
+      
       if anim.endColor then
         for i=1,4 do
           color[i] = anim.endColor[i] * math.sin(proportion * math.pi * 0.5) + anim.startColor[i] * math.cos(proportion * math.pi * 0.5)
@@ -482,6 +495,7 @@ end
 local function AddAnimation(args, image)
   local anim = args.animation
   anim.image = args.id
+  anim.time = anim.time or 1
   image.color = args.startColor or image.color or {1, 1, 1, 1}
   
   if anim.type == "dissolve" and (not anim.startColor) then
@@ -734,13 +748,23 @@ local function AddImage(args, isText)
   
   data.images[args.id] = image
   if (args.layer) then
-    image:SetLayer(layer)
+    image:SetLayer(args.layer)
     image.layer = args.layer
   else
     image.layer = CountElements(data.images)
   end
   
   image:Invalidate()
+end
+
+local function RemoveImage(id)
+  local image = data.images[id]
+  if not image then
+    Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempt to remove nonexistent image " .. id)
+    return
+  end
+  image:Dispose()
+  data.images[id] = nil
 end
 
 -- disposes of existing stuff
@@ -849,6 +873,9 @@ scriptFunctions = {
   
   Exit = function()
     mainWindow:Hide()
+    if WG.Music then
+      --WG.Music.StartTrack()
+    end
   end,
   
   JumpScript = function(script)
@@ -857,12 +884,14 @@ scriptFunctions = {
   
   ModifyImage = function(args)
     local image = data.images[args.id]
-    if not image then
+    if args.id == "background" then
+      image = background
+    elseif not image then
       Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempt to modify nonexistent image " .. args.id)
       return
     end
     
-    local imageDef = defs.images[args.defID] and Spring.Utilities.CopyTable(defs.images[args.defID], true) or {anchor = {}}
+    local imageDef = defs.images[args.defID] and Spring.Utilities.CopyTable(defs.images[args.defID], true) or {anchor = {0, 0}}
     args = Spring.Utilities.MergeTable(args, imageDef, false)
     
     if args.file then
@@ -878,7 +907,7 @@ scriptFunctions = {
     if (type(args.y) == 'string') then
       args.y = screen0.height * tonumber(args.y)
     end
-    local anchor = args.anchor or image.anchor or {}
+    local anchor = args.anchor or image.anchor or {0, 0}
     image.anchor = anchor
     if args.x then image.x = args.x - anchor[1] end
     if args.y then image.y = args.y - anchor[2] end
@@ -897,7 +926,9 @@ scriptFunctions = {
     
     local trackFull = GetFilePath(track)
     local intro = (argsType == 'table' and args.intro and GetFilePath(args.intro)) or trackFull
-    if argsType == 'table' and args.loop and WG.Music and WG.Music.StartLoopingTrack then
+    local loop = (argsType == 'table' and args.loop ~= false) or true
+    
+    if loop and WG.Music and WG.Music.StartLoopingTrack then
       WG.Music.StartLoopingTrack(intro, trackFull)
     elseif WG.Music then
       WG.Music.StartTrack(trackFull)
@@ -920,13 +951,7 @@ scriptFunctions = {
   RemoveImage = function(args)
     local argsType = type(args)
     local id = (argsType == 'string' and args) or (argsType == 'table' and args.id)
-    local image = data.images[id]
-    if not image then
-      Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempt to modify nonexistent image " .. id)
-      return
-    end
-    image:Dispose()
-    data.images[id] = nil
+    RemoveImage(id)
   end,
   
   SetPortrait = function(args)
@@ -1332,7 +1357,11 @@ end
 --------------------------------------------------------------------------------
 local textTime = 0
 
-function widget:Update(dt)
+function widget:Update()
+  local currentTime = Spring.GetTimer()
+    local dt = Spring.DiffTimers(currentTime, timer)
+  timer = currentTime
+  
   if (data.currentScript == nil) then
     return
   end
@@ -1450,7 +1479,11 @@ function widget:Initialize()
     caption = "QUIT",
     width = MENU_BUTTON_WIDTH,
     height = MENU_BUTTON_HEIGHT,
-    OnClick = {function() Cleanup(); mainWindow:Hide() end}
+    OnClick = {function() Cleanup(); mainWindow:Hide()
+      if WG.Music then
+        --WG.Music.StartTrack()
+      end
+    end}
   }
   
   local menuChildren
@@ -1603,7 +1636,7 @@ function widget:Initialize()
     scriptFunctions = scriptFunctions,
   }
   
-  StartStory("test")
+  --StartStory("test")
 end
 
 function widget:Shutdown()
