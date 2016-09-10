@@ -24,6 +24,9 @@ local DIR = GetDirectory(source)
 local config = VFS.Include(string.sub(DIR, 1, -9) .. "Configs/vn_config.lua")
 config.VN_DIR = string.sub(DIR, 1, -15) .. config.VN_DIR
 
+local BG_BLACK = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png"
+local BG_WHITE = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png"
+
 local Chili
 local Window
 local Panel
@@ -107,10 +110,13 @@ local data = {
   --currentScript = nil,
   --currentLine = 1,
   scriptCallstack = {}
-  
 }
 
 scriptFunctions = {}  -- not local so script can access it
+
+local imagesToPreload = {
+
+}
 
 local menuVisible = false
 local uiHidden = false
@@ -164,9 +170,34 @@ end
 local function ResetMainLayers(force)
   backgroundBlack:SetLayer(99)
 end
+
+local function PreloadImage(file)
+  file = GetFilePath(file)
+  imagesToPreload[#imagesToPreload + 1] = file
+end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 function AdvanceScript() end  -- redefined in a bit
+
+function PreloadImagesInScript(scriptName)
+  for i=1,#defs.scripts[scriptName] do
+    local item = defs.scripts[scriptName][i]
+    local file = nil
+    
+    if item[1] == "AddImage" then
+      local args = item[2]
+      local imageDef = defs.images[args.defID] and Spring.Utilities.CopyTable(defs.images[args.defID], true) or {}
+      file = imageDef.file or args.file
+    elseif item[1] == "AddBackground" then
+      local argsType = type(args)
+      file = (argsType == 'string' and args) or (argsType == 'table' and args.file)
+    end
+    
+    if file then
+      PreloadImage(file)
+    end
+  end
+end
 
 local function GetCurrentScriptAndLine()
   local currentStackItem = data.scriptCallstack[#data.scriptCallstack]
@@ -197,6 +228,7 @@ end
 
 local function PushScriptStack(newScript, startingLine)
   data.scriptCallstack[#data.scriptCallstack + 1] = {newScript, startingLine or 1}
+  PreloadImagesInScript(newScript)
 end
 
 local function PopScriptStack()
@@ -263,6 +295,7 @@ local function StartScript(scriptName)
   end
   ResetMainLayers()
   data.scriptCallstack = {{scriptName, 1}}
+  PreloadImagesInScript(scriptName)
   PlayScriptLine()
 end
 
@@ -383,10 +416,10 @@ local function AdvanceAnimations(dt)
     local proportion = anim.timeElapsed/anim.time
     if (proportion <= 0) then
       proportion = 0  -- animation at zero point, do nothing for now
-    elseif target == nil then
-      toRemove[#toRemove+1] = i
     elseif (anim.type == "shake") then
       ShakeImage(anim, proportion)
+    elseif target == nil then
+      toRemove[#toRemove+1] = i
     else
       if (target.classname == "label") or (target.classname == "textbox") then
         target.font.color = target.font.color or {1,1,1,1}
@@ -829,9 +862,9 @@ local function Cleanup()
   --  screen:Dispose()
   --end
   
-  background.file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png"
+  background.file = BG_BLACK
   background.color = {1,1,1,1}
-  overlay.file = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png"
+  overlay.file = BG_WHITE
   overlay.color = {0,0,0,0}
   background:Invalidate()
   overlay:Invalidate()
@@ -1454,6 +1487,22 @@ function widget:Update()
   end
 end
 
+-- image preloader
+function widget:DrawGenesis()
+  if #imagesToPreload > 0 then
+    for i=1,#imagesToPreload do
+      local file = imagesToPreload[v]
+      if file then
+        --Spring.Echo(file)
+        gl.Texture(file)
+        gl.Texture(false)
+        v = v + 1
+      end
+    end
+    imagesToPreload = {}
+  end
+end
+
 function widget:Initialize()
   -- chili stuff here
   if not (WG.Chili) then
@@ -1660,7 +1709,7 @@ function widget:Initialize()
     height = WINDOW_HEIGHT,
     keepAspect = false,
     itemMargin = {0, 0, 0, 0},
-    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png",
+    file = BG_BLACK,
     color = {0, 0, 0, 1},
     OnClick = {function(self, x, y, mouse)
         if mouse == 1 then
@@ -1686,7 +1735,7 @@ function widget:Initialize()
     bottom = 0,
     padding = {0, 0, 0, 0},
     itemMargin = {0, 0, 0, 0},
-    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png",
+    file = BG_WHITE,
     color = {0, 0, 0, 0},
     keepAspect = false,
   }
@@ -1700,7 +1749,7 @@ function widget:Initialize()
     bottom = 0,
     padding = {0, 0, 0, 0},
     itemMargin = {0, 0, 0, 0},
-    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png",
+    file = BG_BLACK,
     keepAspect = false,
   }
   
