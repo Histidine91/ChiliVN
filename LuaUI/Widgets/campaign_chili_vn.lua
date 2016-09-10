@@ -162,13 +162,6 @@ end
 
 -- This forces the background to the back after toggling GUI (so bg doesn't draw in front of UI elements)
 local function ResetMainLayers(force)
-  --[[
-  if force or (not uiHidden) then
-    textPanel:SetLayer(1)
-    menuButton:SetLayer(2)
-    menuStack:SetLayer(3)
-  end
-  ]]--
   backgroundBlack:SetLayer(99)
 end
 --------------------------------------------------------------------------------
@@ -763,14 +756,18 @@ local function AddImage(args, isText)
   args.anchor = args.anchor or {0, 0}
   
   if isText then
+    args.size = args.size or DEFAULT_FONT_SIZE
     image = Label:New {
       id = args.id,
       parent = background,
       caption = SubstituteVars(args.text),
-      height = args.height,
+      height = args.height or (args.size + 8),
       width = args.width,
       align = args.align,
-      font = {size = args.size or DEFAULT_FONT_SIZE, color = args.color, shadow = args.shadow}
+      valign = args.valign,
+      autosize = (args.autosize == nil and true) or false,
+      savespace = false,
+      font = {size = args.size, color = args.color, shadow = args.shadow}
     }
   else
     image = Image:New{
@@ -832,7 +829,7 @@ local function Cleanup()
   --  screen:Dispose()
   --end
   
-  background.file = nil
+  background.file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png"
   background.color = {1,1,1,1}
   overlay.file = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png"
   overlay.color = {0,0,0,0}
@@ -850,8 +847,6 @@ local function Cleanup()
   data.vars = {}
   data.textLog = {}
   data.backgroundFile = ""
-  background.file = ""
-  background:Invalidate()
   data.portraitFile = ""
   data.currentText = nil
   data.currentMusic = nil
@@ -1705,6 +1700,7 @@ function widget:Initialize()
     bottom = 0,
     padding = {0, 0, 0, 0},
     itemMargin = {0, 0, 0, 0},
+    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png",
     keepAspect = false,
   }
   
