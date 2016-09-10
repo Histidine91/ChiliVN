@@ -104,9 +104,10 @@ local data = {
   nvlMode = false,
   nvlText = {},  -- {[1] = <AddText args table>, [2] = ...}
 
-  currentScript = nil,
-
-  currentLine = 1,
+  --currentScript = nil,
+  --currentLine = 1,
+  scriptCallstack = {}
+  
 }
 
 scriptFunctions = {}  -- not local so script can access it
@@ -174,19 +175,57 @@ end
 --------------------------------------------------------------------------------
 function AdvanceScript() end  -- redefined in a bit
 
-local function GetCurrentScriptLineItem()
-  local item = defs.scripts[data.currentScript][data.currentLine]
+local function GetCurrentScriptAndLine()
+  local currentStackItem = data.scriptCallstack[#data.scriptCallstack]
+  if currentStackItem == nil then
+    --Spring.Log(widget:GetInfo().name, LOG.WARNING, "No script loaded #54")
+    return nil, 1
+  end
+  local currentScript = currentStackItem[1]
+  local line = currentStackItem[2]
+  return currentScript, line
+end
+
+-- returns the script command for the current script at the specified line (or the current line if no line is specified)
+local function GetScriptLineItem(script, line)
+  local currentScript, currentLine = GetCurrentScriptAndLine()
+  script = script or currentScript
+  line = line or currentLine
+  if not script then
+    Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempt to get item for nonexistent script")
+    return nil
+  elseif not defs.scripts[script] then
+    Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempt to get item for invalid script " .. script)
+    return nil
+  end
+  local item = defs.scripts[currentScript][currentLine]
   return item
+end
+
+local function PushScriptStack(newScript, startingLine)
+  data.scriptCallstack[#data.scriptCallstack + 1] = {newScript, startingLine or 1}
+end
+
+local function PopScriptStack()
+  if #data.scriptCallstack == 1 then
+    Spring.Log(widget:GetInfo().name, LOG.WARNING, "Reached bottom of script call stack")
+    return false
+  elseif #data.scriptCallstack <= 0 then
+    Spring.Log(widget:GetInfo().name, LOG.WARNING, "No script loaded, cannot pop stack")
+    return false
+  end
+  data.scriptCallstack[#data.scriptCallstack] = nil
+  return true
 end
 
 -- Runs the action for the current line in the script
 local function PlayScriptLine(line)
-  if (not data.currentScript) then
+  if (data.storyID == nil) then
     Spring.Log(widget:GetInfo().name, LOG.ERROR, "No story loaded")
     return
   end
-  line = line or data.currentLine
-  local item = defs.scripts[data.currentScript][line]
+  
+  local item = GetScriptLineItem(nil, line)
   if item then
     if type(item) == 'function' then
       item()
@@ -216,8 +255,12 @@ local function PlayScriptLine(line)
         end
       end
     end
-  elseif line > #defs.scripts[data.currentScript] then
-    Spring.Log(widget:GetInfo().name, LOG.WARNING, "Reached end of script " .. data.currentScript)
+  elseif line > #defs.scripts[GetCurrentScriptAndLine()] then
+    if PopScriptStack() then
+      AdvanceScript()
+    else
+      -- nothing to do
+    end
   end
 end
 
@@ -226,9 +269,8 @@ local function StartScript(scriptName)
     mainWindow:Show()
   end
   ResetMainLayers()
-  data.currentScript = scriptName
-  data.currentLine = 1
-  PlayScriptLine(1)
+  data.scriptCallstack = {{scriptName, 1}}
+  PlayScriptLine()
 end
 
 local function ResizeNVLEntryPanel(textControl, nvlControlsEntry)
@@ -277,7 +319,7 @@ local function AdvanceText(time, toEnd)
       if autoAdvance then
         waitTime = waitTime or options.waitTime.value
       else
-        local item = GetCurrentScriptLineItem()
+        local item = GetScriptLineItem()
         if item then
           local args = item[2]
           if (type(args) == 'table') and args.wait == false then
@@ -348,6 +390,8 @@ local function AdvanceAnimations(dt)
     local proportion = anim.timeElapsed/anim.time
     if (proportion <= 0) then
       proportion = 0  -- animation at zero point, do nothing for now
+    elseif target == nil then
+      toRemove[#toRemove+1] = i
     elseif (anim.type == "shake") then
       ShakeImage(anim, proportion)
     else
@@ -444,8 +488,9 @@ AdvanceScript = function(skipAnims)
   if skipAnims then
     AdvanceAnimations(99999)
   end
-  data.currentLine = data.currentLine + 1
-  PlayScriptLine(data.currentLine)
+  local currentStackItem = data.scriptCallstack[#data.scriptCallstack]
+  currentStackItem[2] = currentStackItem[2] + 1
+  PlayScriptLine(currentStackItem[2])
 end
 
 
@@ -721,7 +766,7 @@ local function AddImage(args, isText)
     image = Label:New {
       id = args.id,
       parent = background,
-      caption = args.text,
+      caption = SubstituteVars(args.text),
       height = args.height,
       width = args.width,
       align = args.align,
@@ -787,8 +832,7 @@ local function Cleanup()
   --  screen:Dispose()
   --end
   
-  data.backgroundFile = ""
-  background.file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png"
+  background.file = nil
   background.color = {1,1,1,1}
   overlay.file = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png"
   overlay.color = {0,0,0,0}
@@ -805,12 +849,14 @@ local function Cleanup()
   data.subscreens = {}
   data.vars = {}
   data.textLog = {}
+  data.backgroundFile = ""
+  background.file = ""
+  background:Invalidate()
   data.portraitFile = ""
   data.currentText = nil
   data.currentMusic = nil
   data.nvlMode = false
-  data.currentScript = nil
-  data.currentLine = 1
+  data.scriptCallstack = {}
 end
 
 local function CloseStory()
@@ -856,6 +902,14 @@ scriptFunctions = {
   
   AddTextAsImage = function(args)
     AddImage(args, true)
+  end,
+  
+  CallScript = function(args)
+    local argsType = type(args)
+    local script = (argsType == 'string' and args) or (argsType == 'table' and args.script)
+    local line = (argsType == 'table' and args.line) or 1
+    PushScriptStack(script, line)
+    PlayScriptLine()
   end,
   
   ClearNVL = function()
@@ -1294,7 +1348,7 @@ local function LoadGame(filename)
   scriptFunctions.PlayMusic({track = data.currentMusic, wait = true})
   
   RemoveChoiceDialogPanel()
-  local scriptItem = GetCurrentScriptLineItem()
+  local scriptItem = GetScriptLineItem()
   if scriptItem and scriptItem[1] == "ChoiceDialog" then
     PlayScriptLine()
   end
@@ -1381,7 +1435,7 @@ function widget:Update()
     local dt = Spring.DiffTimers(currentTime, timer)
   timer = currentTime
   
-  if (data.currentScript == nil) then
+  if (GetCurrentScriptAndLine() == nil) then
     return
   end
   
@@ -1651,7 +1705,6 @@ function widget:Initialize()
     bottom = 0,
     padding = {0, 0, 0, 0},
     itemMargin = {0, 0, 0, 0},
-    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png",
     keepAspect = false,
   }
   
