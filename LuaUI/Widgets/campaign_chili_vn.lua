@@ -41,7 +41,7 @@ local textPanel
 local textbox, nameLabel
 local nvlPanel, nvlStack
 local portraitPanel, portrait
-local background, backgroundBlack
+local background, backgroundBlack, overlay
 local menuButton, menuStack
 local buttonSave, buttonLoad, buttonLog, buttonQuit
 local logPanel
@@ -330,7 +330,12 @@ local function AdvanceAnimations(dt)
   for i=1, #animations do
     local anim = animations[i]
     local done = false
-    local target = anim.image and data.images[anim.image] or background
+    local target = anim.image and data.images[anim.image]
+    if anim.image == "background" then
+      target = background
+    elseif anim.image == "overlay" then
+      target = overlay
+    end
     local color, color2
     
     anim.timeElapsed = (anim.timeElapsed or 0) + dt
@@ -741,6 +746,7 @@ local function AddImage(args, isText)
   image.x = args.x - args.anchor[1]
   image.y = args.y - args.anchor[2]
   image.anchor = args.anchor
+  image.color = args.color or image.color
   
   if (args.animation) then
     AddAnimation(args, image)
@@ -780,6 +786,15 @@ local function Cleanup()
   --for screenID, screen in pairs(data.subscreens) do
   --  screen:Dispose()
   --end
+  
+  data.backgroundFile = ""
+  background.file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png"
+  background.color = {1,1,1,1}
+  overlay.file = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png"
+  overlay.color = {0,0,0,0}
+  background:Invalidate()
+  overlay:Invalidate()
+  
   scriptFunctions.StopMusic()
   SetPortrait(nil)
   textbox:SetText("")
@@ -790,9 +805,6 @@ local function Cleanup()
   data.subscreens = {}
   data.vars = {}
   data.textLog = {}
-  data.backgroundFile = ""
-  background.file = ""
-  background:Invalidate()
   data.portraitFile = ""
   data.currentText = nil
   data.currentMusic = nil
@@ -826,7 +838,9 @@ scriptFunctions = {
     background.oldFile = background.file
     background.file = GetFilePath(image)
     data.backgroundFile = image
+    background.color = args.color or background.color
     if (argsType == 'table' and args.animation) then
+      args.id = "background"
       AddAnimation(args, background)
     end
     background:Invalidate()
@@ -886,6 +900,8 @@ scriptFunctions = {
     local image = data.images[args.id]
     if args.id == "background" then
       image = background
+    elseif args.id == "overlay" then
+      image = overlay
     elseif not image then
       Spring.Log(widget:GetInfo().name, LOG.ERROR, "Attempt to modify nonexistent image " .. args.id)
       return
@@ -911,6 +927,8 @@ scriptFunctions = {
     image.anchor = anchor
     if args.x then image.x = args.x - anchor[1] end
     if args.y then image.y = args.y - anchor[2] end
+    
+    image.color = args.color or image.color
     
     if (args.animation) then
       AddAnimation(args, image)
@@ -983,6 +1001,7 @@ scriptFunctions = {
   
   ShakeScreen = function(args)
     args.type = "shake"
+    args.id = "background"
     AddAnimation({animation = args}, background)
   end,
   
@@ -1366,7 +1385,7 @@ function widget:Update()
     return
   end
   
-  if (waitTime) then
+  if (waitTime and type(waitTime) == "number") then
     waitTime = waitTime - dt
     if waitTime <= 0 then
       waitTime = nil
@@ -1592,7 +1611,8 @@ function widget:Initialize()
     height = WINDOW_HEIGHT,
     keepAspect = false,
     itemMargin = {0, 0, 0, 0},
-    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png",
+    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png",
+    color = {0, 0, 0, 1},
     OnClick = {function(self, x, y, mouse)
         if mouse == 1 then
           if not uiHidden then
@@ -1606,7 +1626,21 @@ function widget:Initialize()
       end
     },
     OnMouseDown = {function(self) return true end},
-  }  
+  }
+  
+  overlay = Image:New{
+    parent = backgroundBlack,
+    name = "vn_overlay",
+    x = 0,
+    y = 0,
+    right = 0,
+    bottom = 0,
+    padding = {0, 0, 0, 0},
+    itemMargin = {0, 0, 0, 0},
+    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_white.png",
+    color = {0, 0, 0, 0},
+    keepAspect = false,
+  }
   
   background = Image:New{
     parent = backgroundBlack,
@@ -1617,6 +1651,7 @@ function widget:Initialize()
     bottom = 0,
     padding = {0, 0, 0, 0},
     itemMargin = {0, 0, 0, 0},
+    file = string.sub(DIR, 1, -9) .. "Images/vn/bg_black.png",
     keepAspect = false,
   }
   
